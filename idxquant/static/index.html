@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>IDX Quant</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#/">IDX Quant</a>
+    <nav>
+      <a href="#/" data-nav="today">Today</a>
+      <a href="#/results" data-nav="results">Results</a>
+      <a href="#/how" data-nav="how">How it works</a>
+    </nav>
+    <div class="status">
+      <span id="data-date"></span>
+      <button id="refresh" type="button">Refresh</button>
+    </div>
+  </header>
+  <div id="banner" class="banner" hidden></div>
+  <main id="app"></main>
+  <footer>Model output, not personal advice. It doesn't know your money or risk limits, and it can be wrong.</footer>
+  <div id="helpbox" class="helpbox" role="tooltip" hidden></div>
+  <script src="/static/methods.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>

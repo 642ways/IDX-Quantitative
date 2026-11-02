@@ -1,0 +1,8 @@
+.env.*
+*.sqlite
+*.sqlite-journal
+*.log
+.claude/
+.vscode/
+.idea/
+Thumbs.db.claude/

@@ -1,0 +1,93 @@
+<style>
+  .wide { grid-template-columns: 1fr !important; display: grid; gap: 20px; }
+  .wide .card-image { height: auto; min-height: 0; aspect-ratio: auto; display: block; padding: 16px; text-align: left; font-size: 13px; line-height: 1.45; }
+  .tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .tbl th { text-align: left; font-size: 11px; opacity: .65; font-weight: 600; padding: 4px 8px; border-bottom: 1px solid rgba(128,128,128,.35); }
+  .tbl td { padding: 7px 8px; border-bottom: 1px solid rgba(128,128,128,.15); vertical-align: top; }
+  .tk { font-weight: 700; }
+  .tag { display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 10px; }
+  .long { background: rgba(46,125,209,.16); color: #2e7dd1; }
+  .short { background: rgba(217,130,30,.16); color: #c9761a; }
+  .pair { background: rgba(130,90,200,.16); color: #8460c8; }
+  .up { color: #2c9a5b; font-weight: 600; }
+  .row { display: grid; gap: 12px; }
+  .r2 { grid-template-columns: 1fr 1fr; }
+  .box { border: 1px solid rgba(128,128,128,.3); border-radius: 8px; padding: 12px; }
+  .muted { opacity: .65; font-size: 12px; }
+  .num { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; margin: 6px 0; }
+  .num b { font-weight: 600; }
+  .hd { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .steps { margin: 6px 0 0; padding-left: 16px; font-size: 12px; }
+  .colhead { font-weight: 700; font-size: 13px; margin-bottom: 8px; }
+</style>
+
+<h2>Which first page feels right for your morning?</h2>
+<p class="subtitle">All three show today's picks and their playbook. Tickers are real IDX names, but every number is made up to show the layout.</p>
+
+<div class="cards wide">
+
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <table class="tbl">
+        <tr><th>#</th><th>Stock</th><th>Play</th><th>Entry</th><th>Target</th><th>Stop</th><th>PE</th><th>PBV</th><th>Why today</th></tr>
+        <tr><td>1</td><td class="tk">BBRI</td><td><span class="tag long">Long term</span></td><td>4,250</td><td class="up">5,100</td><td>3,900</td><td>10.2</td><td>1.9</td><td>Cheap and high quality</td></tr>
+        <tr><td>2</td><td class="tk">ADRO</td><td><span class="tag pair">Pair trade</span></td><td>2,480</td><td class="up">2,640</td><td>2,380</td><td>5.1</td><td>0.8</td><td>2.3&sigma; below PTBA</td></tr>
+        <tr><td>3</td><td class="tk">TLKM</td><td><span class="tag short">Short term</span></td><td>2,910</td><td class="up">3,120</td><td>2,810</td><td>11.8</td><td>2.0</td><td>Momentum turning up</td></tr>
+        <tr><td>4</td><td class="tk">ICBP</td><td><span class="tag long">Long term</span></td><td>11,200</td><td class="up">13,400</td><td>10,300</td><td>14.6</td><td>2.7</td><td>Steady earnings growth</td></tr>
+      </table>
+      <p class="muted" style="margin:8px 0 0">Click a row to open the full playbook and stock details.</p>
+    </div>
+    <div class="card-body"><h3>A. Ranked table</h3><p>Dense. Compare many stocks at a glance, like a screener.</p></div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="row r2">
+        <div class="box">
+          <div class="hd"><span class="tk">BBRI &middot; Bank Rakyat Indonesia</span><span class="tag long">Long term</span></div>
+          <div class="num"><span>PE <b>10.2</b></span><span>PBV <b>1.9</b></span><span>ROE <b>18%</b></span><span>Yield <b>6.1%</b></span></div>
+          <div><b>The play:</b> buy on dips, hold 6 to 12 months.</div>
+          <ol class="steps"><li>Buy near 4,250</li><li>Target 5,100 (+20%)</li><li>Exit below 3,900</li></ol>
+        </div>
+        <div class="box">
+          <div class="hd"><span class="tk">ADRO &middot; Pair with PTBA</span><span class="tag pair">Pair trade</span></div>
+          <div class="num"><span>PE <b>5.1</b></span><span>PBV <b>0.8</b></span><span>Spread <b>2.3&sigma;</b></span><span>Half-life <b>9d</b></span></div>
+          <div><b>The play:</b> ADRO is unusually cheap against PTBA.</div>
+          <ol class="steps"><li>Buy ADRO near 2,480</li><li>Exit when the gap closes</li><li>Exit if the gap reaches 3.5&sigma;</li></ol>
+        </div>
+      </div>
+    </div>
+    <div class="card-body"><h3>B. Playbook cards</h3><p>Each stock reads like a short trade note. Fewer stocks on screen, but the play is obvious right away.</p></div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="row r2">
+        <div>
+          <div class="colhead">Short term: days to weeks</div>
+          <div class="box" style="margin-bottom:8px">
+            <div class="hd"><span class="tk">ADRO</span><span class="tag pair">Pair with PTBA</span></div>
+            <div class="muted">Buy 2,480 &rarr; 2,640 &middot; stop 2,380 &middot; PE 5.1 &middot; PBV 0.8</div>
+          </div>
+          <div class="box">
+            <div class="hd"><span class="tk">TLKM</span><span class="tag short">Momentum</span></div>
+            <div class="muted">Buy 2,910 &rarr; 3,120 &middot; stop 2,810 &middot; PE 11.8 &middot; PBV 2.0</div>
+          </div>
+        </div>
+        <div>
+          <div class="colhead">Long term: months to years</div>
+          <div class="box" style="margin-bottom:8px">
+            <div class="hd"><span class="tk">BBRI</span><span class="tag long">Value + quality</span></div>
+            <div class="muted">Buy 4,250 &rarr; 5,100 &middot; stop 3,900 &middot; PE 10.2 &middot; PBV 1.9</div>
+          </div>
+          <div class="box">
+            <div class="hd"><span class="tk">ICBP</span><span class="tag long">Growth</span></div>
+            <div class="muted">Buy 11,200 &rarr; 13,400 &middot; stop 10,300 &middot; PE 14.6 &middot; PBV 2.7</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body"><h3>C. Short term vs long term</h3><p>Two columns, so you go straight to the time horizon you're trading today.</p></div>
+  </div>
+
+</div>

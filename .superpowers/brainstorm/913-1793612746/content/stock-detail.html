@@ -1,0 +1,72 @@
+<style>
+  .g { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .bx { border: 1px solid rgba(128,128,128,.3); border-radius: 8px; padding: 12px; font-size: 13px; line-height: 1.5; }
+  .bx h4 { margin: 0 0 6px; font-size: 13px; }
+  .hd { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 12px; }
+  .big { font-size: 20px; font-weight: 700; }
+  .tag { font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 10px; background: rgba(130,90,200,.16); color: #8460c8; }
+  .m { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .m div { font-size: 11px; opacity: .85; }
+  .m b { display: block; font-size: 15px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { text-align: left; opacity: .65; font-weight: 600; padding: 3px 6px; border-bottom: 1px solid rgba(128,128,128,.35); }
+  td { padding: 5px 6px; border-bottom: 1px solid rgba(128,128,128,.15); }
+  ol { margin: 0; padding-left: 18px; }
+  .bar { display: grid; grid-template-columns: 70px 1fr 28px; gap: 8px; align-items: center; font-size: 12px; margin: 3px 0; }
+  .track { height: 7px; background: rgba(128,128,128,.2); border-radius: 4px; }
+  .fill { height: 7px; background: #2e7dd1; border-radius: 4px; }
+</style>
+
+<h2>What opens when you click a row</h2>
+<p class="subtitle">Example: ADRO from the table. Every number is made up to show the layout.</p>
+
+<div class="mockup">
+  <div class="mockup-header">Stock detail</div>
+  <div class="mockup-body">
+    <div class="hd">
+      <div><span class="big">ADRO</span> &nbsp;Rp 2,480 &nbsp;<span class="tag">Pair trade</span></div>
+      <div style="font-size:12px;opacity:.65">Rank 2 of 40 today</div>
+    </div>
+
+    <div class="g">
+      <div class="bx">
+        <h4>The playbook</h4>
+        <ol>
+          <li>Buy near 2,480, up to 2,520</li>
+          <li>Take profit at 2,640 (+6.5%) or when the gap closes</li>
+          <li>Exit below 2,380 (-4%)</li>
+          <li>Give it 2 to 3 weeks, then walk away</li>
+        </ol>
+      </div>
+
+      <div class="bx">
+        <h4>Valuation</h4>
+        <div class="m">
+          <div><b>5.1</b>PE</div>
+          <div><b>0.8</b>PBV</div>
+          <div><b>19%</b>ROE</div>
+          <div><b>8.2%</b>Dividend yield</div>
+        </div>
+        <div style="font-size:12px;opacity:.65;margin-top:8px">Sector median: PE 6.4, PBV 1.1</div>
+      </div>
+
+      <div class="bx">
+        <h4>Statistical arbitrage with other stocks</h4>
+        <table>
+          <tr><th>Paired with</th><th>Gap now</th><th>Back to normal in</th><th>Signal</th></tr>
+          <tr><td><b>PTBA</b></td><td>2.3&sigma; cheap</td><td>~9 days</td><td>Active</td></tr>
+          <tr><td><b>ITMG</b></td><td>1.4&sigma; cheap</td><td>~14 days</td><td>Watch</td></tr>
+          <tr><td><b>INDY</b></td><td>0.4&sigma;</td><td>~21 days</td><td>None</td></tr>
+        </table>
+      </div>
+
+      <div class="bx">
+        <h4>Factor scores</h4>
+        <div class="bar"><span>Value</span><div class="track"><div class="fill" style="width:92%"></div></div><span>92</span></div>
+        <div class="bar"><span>Quality</span><div class="track"><div class="fill" style="width:74%"></div></div><span>74</span></div>
+        <div class="bar"><span>Momentum</span><div class="track"><div class="fill" style="width:38%"></div></div><span>38</span></div>
+        <div class="bar"><span>Size</span><div class="track"><div class="fill" style="width:61%"></div></div><span>61</span></div>
+      </div>
+    </div>
+  </div>
+</div>

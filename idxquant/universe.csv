@@ -1,0 +1,82 @@
+# IDX80 for 2 Nov 2026 - 29 Jan 2027. Aug-Oct 2026 list from investasiku.id, with the Oct 2026 changes reported by Kontan (in: AALI SMDR TINS TKIM; out: CUAN HEAL MIKA SMRA). Compiled 2026-11-02. Sector groups are hand-assigned for pair and value comparisons.
+ticker,name,sector
+AADI,Adaro Andalan Indonesia,Coal
+AALI,Astra Agro Lestari,Plantation
+ACES,Aspirasi Hidup Indonesia,Retail
+ADMR,Alamtri Minerals Indonesia,Coal
+ADRO,Alamtri Resources Indonesia,Coal
+AKRA,AKR Corporindo,Energy
+AMMN,Amman Mineral Internasional,Metals
+AMRT,Sumber Alfaria Trijaya,Retail
+ANTM,Aneka Tambang,Metals
+ARTO,Bank Jago,Banks
+ASII,Astra International,Industrial
+BBCA,Bank Central Asia,Banks
+BBNI,Bank Negara Indonesia,Banks
+BBRI,Bank Rakyat Indonesia,Banks
+BBTN,Bank Tabungan Negara,Banks
+BFIN,BFI Finance Indonesia,Finance
+BKSL,Sentul City,Property
+BMRI,Bank Mandiri,Banks
+BRMS,Bumi Resources Minerals,Metals
+BRPT,Barito Pacific,Chemicals
+BSDE,Bumi Serpong Damai,Property
+BUKA,Bukalapak.com,Technology
+BUMI,Bumi Resources,Coal
+CBDK,Bangun Kosambi Sukses,Property
+CMRY,Cisarua Mountain Dairy,Consumer
+CPIN,Charoen Pokphand Indonesia,Consumer
+CTRA,Ciputra Development,Property
+DEWA,Darma Henwa,Coal
+DSNG,Dharma Satya Nusantara,Plantation
+ELSA,Elnusa,Energy
+EMTK,Elang Mahkota Teknologi,Technology
+ENRG,Energi Mega Persada,Energy
+ERAA,Erajaya Swasembada,Retail
+ESSA,ESSA Industries Indonesia,Chemicals
+EXCL,XLSmart Telecom Sejahtera,Telecom
+GGRM,Gudang Garam,Consumer
+GOTO,GoTo Gojek Tokopedia,Technology
+HRTA,Hartadinata Abadi,Retail
+HRUM,Harum Energy,Coal
+ICBP,Indofood CBP Sukses Makmur,Consumer
+INCO,Vale Indonesia,Metals
+INDF,Indofood Sukses Makmur,Consumer
+INDY,Indika Energy,Coal
+INKP,Indah Kiat Pulp & Paper,Paper
+ISAT,Indosat,Telecom
+ITMG,Indo Tambangraya Megah,Coal
+JPFA,Japfa Comfeed Indonesia,Consumer
+JSMR,Jasa Marga,Infrastructure
+KIJA,Kawasan Industri Jababeka,Property
+KLBF,Kalbe Farma,Healthcare
+KPIG,MNC Land,Property
+LSIP,PP London Sumatra Indonesia,Plantation
+MAPA,MAP Aktif Adiperkasa,Retail
+MAPI,Mitra Adiperkasa,Retail
+MBMA,Merdeka Battery Materials,Metals
+MDKA,Merdeka Copper Gold,Metals
+MEDC,Medco Energi Internasional,Energy
+MYOR,Mayora Indah,Consumer
+NCKL,Trimegah Bangun Persada,Metals
+PGAS,Perusahaan Gas Negara,Energy
+PGEO,Pertamina Geothermal Energy,Energy
+PNLF,Panin Financial,Finance
+PTBA,Bukit Asam,Coal
+PTRO,Petrosea,Coal
+PWON,Pakuwon Jati,Property
+RAJA,Rukun Raharja,Energy
+RATU,Raharja Energi Cepu,Energy
+SCMA,Surya Citra Media,Technology
+SMDR,Samudera Indonesia,Transport
+SMGR,Semen Indonesia,Cement
+SSIA,Surya Semesta Internusa,Property
+TAPG,Triputra Agro Persada,Plantation
+TINS,Timah,Metals
+TKIM,Pabrik Kertas Tjiwi Kimia,Paper
+TLKM,Telkom Indonesia,Telecom
+TOWR,Sarana Menara Nusantara,Telecom
+TPIA,Chandra Asri Pacific,Chemicals
+UNTR,United Tractors,Industrial
+UNVR,Unilever Indonesia,Consumer
+WIFI,Solusi Sinergi Digital,Telecom
