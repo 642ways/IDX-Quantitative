@@ -53,6 +53,9 @@ class FakeFetcher:
     def fetch_index(self):
         return frame(50)
 
+    def fetch_usdidr_history(self):
+        return frame(51)
+
 
 def universe(tickers):
     return pd.DataFrame({"ticker": tickers, "name": tickers, "sector": ["Coal" if i % 2 else "Banks" for i in range(len(tickers))]})
@@ -95,6 +98,39 @@ def test_nan_close_on_latest_bar_is_skipped_with_a_reason(tmp_path):
     _, snapshot = execute(tmp_path, FakeFetcher({"AAAA": broken, "BBBB": frame(2)}), ["AAAA", "BBBB"])
     assert "AAAA" not in snapshot["stocks"]
     assert "AAAA" in [item["ticker"] for item in snapshot["skipped"]]
+
+
+def with_blank_last_close(prices):
+    blanked = prices.copy()
+    blanked.iloc[-1, blanked.columns.get_indexer(["open", "high", "low", "close", "adj_close"])] = float("nan")
+    return blanked
+
+
+def test_blank_latest_close_is_filled_from_saved_prices(tmp_path):
+    good = frame(1)
+    store, first = execute(tmp_path, FakeFetcher({"AAAA": good}), ["AAAA"])
+    second = run(store, FakeFetcher({"AAAA": with_blank_last_close(good)}), FRIDAY_EVENING, CONFIG, universe(["AAAA"]))
+    assert second["data_date"] == first["data_date"]
+    assert second["stocks"]["AAAA"]["close"] == pytest.approx(float(good["close"].iloc[-1]))
+
+
+def test_blank_latest_index_close_is_filled_from_saved_prices(tmp_path):
+    class BlankIndex(FakeFetcher):
+        def fetch_index(self):
+            return with_blank_last_close(frame(50))
+
+    store, _ = execute(tmp_path, FakeFetcher({"AAAA": frame(1)}), ["AAAA"])
+    run(store, BlankIndex({"AAAA": frame(1)}), FRIDAY_EVENING, CONFIG, universe(["AAAA"]))
+    assert store.load_prices("^JKSE")["close"].iloc[-1] == pytest.approx(float(frame(50)["close"].iloc[-1]))
+
+
+def test_a_refresh_older_than_the_latest_result_is_not_saved(tmp_path):
+    store, first = execute(tmp_path, FakeFetcher({"AAAA": frame(1)}), ["AAAA"])
+    older = FakeFetcher({"AAAA": frame(1).iloc[:-1]})
+    result = run(store, older, FRIDAY_EVENING, CONFIG, universe(["AAAA"]))
+    assert result["warnings"]
+    assert result["data_date"] == first["data_date"]
+    assert len(store.all_snapshots()) == 1
 
 
 def test_mostly_failed_refresh_keeps_the_good_snapshot(tmp_path):
@@ -244,6 +280,32 @@ def test_snapshot_carries_the_market_regime(tmp_path):
     _, snapshot = execute(tmp_path, FakeFetcher({"AAAA": frame(1)}), ["AAAA"])
     assert snapshot["regime"]["label"] in ("Calm", "Stressed")
     assert set(snapshot["backtest"]["regimes"]) == {"short", "pair", "momentum"}
+
+
+def test_snapshot_carries_the_market_type(tmp_path):
+    _, snapshot = execute(tmp_path, FakeFetcher({"AAAA": frame(1)}), ["AAAA"])
+    assert snapshot["market_type"]["label"]
+    assert set(snapshot["backtest"]["market_types"]) == {"short", "pair", "momentum"}
+
+
+class NoRateHistoryFetcher(FakeFetcher):
+    def fetch_usdidr_history(self):
+        raise RuntimeError("Yahoo is down")
+
+
+def test_missing_rate_history_warns_and_still_gives_the_regime(tmp_path):
+    _, snapshot = execute(tmp_path, NoRateHistoryFetcher({"AAAA": frame(1)}), ["AAAA"])
+    assert snapshot["market_type"] is None
+    assert any("market type" in warning for warning in snapshot["warnings"])
+    assert snapshot["regime"] is not None
+
+
+def test_old_backtest_without_market_types_is_recomputed(tmp_path):
+    store, first = execute(tmp_path, FakeFetcher({"AAAA": frame(1)}), ["AAAA"])
+    del first["backtest"]["market_types"]
+    store.save_snapshot(first["data_date"], first)
+    second = run(store, FakeFetcher({"AAAA": frame(1)}), FRIDAY_EVENING + timedelta(days=3), CONFIG, universe(["AAAA"]))
+    assert "market_types" in second["backtest"]
 
 
 class NoIndexFetcher(FakeFetcher):

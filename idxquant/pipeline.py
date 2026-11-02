@@ -8,7 +8,7 @@ import zlib
 import numpy as np
 import pandas as pd
 
-from idxquant import backtest, factors, montecarlo, pairs, plays, regimes, universe, yahoo
+from idxquant import backtest, clusters, factors, montecarlo, pairs, plays, regimes, universe, yahoo
 from idxquant.config import CONFIG
 from idxquant.trading import net_return
 
@@ -117,21 +117,45 @@ def _pair_rows(found: list[pairs.Pair], ticker: str) -> list[dict]:
     return sorted(rows, key=lambda row: row["gap"])
 
 
+def _usable_bars(prices: pd.DataFrame, store, ticker: str) -> pd.DataFrame:
+    """Yahoo sometimes blanks a recent bar it had earlier, so saved values fill any gaps."""
+    if prices.empty:
+        return prices
+    saved = store.load_prices(ticker)
+    filled = prices.fillna(saved.reindex(prices.index)) if not saved.empty else prices
+    return filled.dropna(subset=["close"])
+
+
 def _market_closes(fetcher, store, now, cfg) -> pd.Series | None:
     try:
         index = drop_partial_bar(fetcher.fetch_index(), now, cfg)
     except Exception:
         return None
+    index = _usable_bars(index, store, INDEX_TICKER)
     if index.empty:
         return None
     store.save_prices(INDEX_TICKER, index)
-    return index["close"].dropna()
+    return index["close"]
 
 
-def _backtests(frames, sectors, previous, today, market, cfg):
+def _market_features(fetcher, market, frames, cfg) -> pd.DataFrame | None:
+    if market is None:
+        return None
+    try:
+        rates = fetcher.fetch_usdidr_history()
+    except Exception:
+        return None
+    if rates.empty:
+        return None
+    closes = pd.DataFrame({ticker: frame["close"] for ticker, frame in frames.items()})
+    return clusters.weekly_features(market, closes, rates["close"], cfg)
+
+
+def _backtests(frames, sectors, previous, today, market, features, cfg):
     earlier = (previous or {}).get("backtest") or {}
     same_rules = earlier.get("calibration", {}).get("long", {}).get("stop") == cfg.long_stop
-    if same_rules and earlier.get("regimes") and previous.get("backtest_at"):
+    complete = earlier.get("regimes") and earlier.get("market_types")
+    if same_rules and complete and previous.get("backtest_at"):
         age = (today - date.fromisoformat(previous["backtest_at"])).days
         if age < cfg.backtest_max_age_days:
             return earlier, previous["backtest_at"]
@@ -139,6 +163,7 @@ def _backtests(frames, sectors, previous, today, market, cfg):
     pair = backtest.pair_trades(frames, sectors, cfg) if len(frames) > 1 else []
     months = backtest.momentum_months(frames, cfg)
     stress = regimes.stress_series(market, cfg) if market is not None else None
+    labels = clusters.label_series(features, cfg) if features is not None else None
     results = {
         "short": backtest.summarise_dated(short),
         "pair": backtest.summarise_dated(pair),
@@ -149,6 +174,13 @@ def _backtests(frames, sectors, previous, today, market, cfg):
             "short": regimes.split_by_regime(short, stress, cfg),
             "pair": regimes.split_by_regime(pair, stress, cfg),
             "momentum": regimes.split_by_regime(months, stress, cfg),
+        },
+        "market_types": None
+        if labels is None
+        else {
+            "short": clusters.split_by_label(short, labels),
+            "pair": clusters.split_by_label(pair, labels),
+            "momentum": clusters.split_by_label(months, labels),
         },
         "calibration": {
             "short": montecarlo.calibrate_short(frames, cfg=cfg),
@@ -194,9 +226,7 @@ def run(store, fetcher=yahoo, now: datetime | None = None, cfg=CONFIG, stocks: p
     fetched = _fetch_all(list(stocks["ticker"]), fetcher)
     skipped, frames, fundamentals, failures = [], {}, {}, 0
     for ticker, (prices, funda) in fetched.items():
-        prices = drop_partial_bar(prices, now, cfg)
-        if not prices.empty:
-            prices = prices.dropna(subset=["close"])
+        prices = _usable_bars(drop_partial_bar(prices, now, cfg), store, ticker)
         if prices.empty:
             failures += 1
             skipped.append({"ticker": ticker, "reason": "No price data from Yahoo"})
@@ -212,6 +242,9 @@ def run(store, fetcher=yahoo, now: datetime | None = None, cfg=CONFIG, stocks: p
         return _failed_run(previous, message, now)
 
     data_day = max(frame.index[-1] for frame in frames.values())
+    if previous and previous.get("data_date") and data_day.strftime("%Y-%m-%d") < previous["data_date"]:
+        message = "Yahoo's latest data is older than the saved result, so the last good result stays on screen."
+        return _failed_run(previous, message, now)
     for ticker in list(frames):
         frame = frames[ticker]
         reason = None
@@ -315,8 +348,12 @@ def run(store, fetcher=yahoo, now: datetime | None = None, cfg=CONFIG, stocks: p
     regime = regimes.current_regime(market, cfg) if market is not None else None
     if regime is None:
         warnings.append("No IHSG data today, so there's no market regime reading.")
+    features = _market_features(fetcher, market, frames, cfg)
+    market_type = clusters.current_market_type(features, cfg) if features is not None else None
+    if market_type is None:
+        warnings.append("Not enough IHSG or USD/IDR data today, so there's no market type reading.")
 
-    results, tested_at = _backtests(frames, sectors, previous, now.date(), market, cfg)
+    results, tested_at = _backtests(frames, sectors, previous, now.date(), market, features, cfg)
     data_date = data_day.strftime("%Y-%m-%d")
     snapshot = _clean(
         {
@@ -326,6 +363,7 @@ def run(store, fetcher=yahoo, now: datetime | None = None, cfg=CONFIG, stocks: p
             "picks": picks,
             "stocks": stock_pages,
             "regime": regime,
+            "market_type": market_type,
             "backtest": results,
             "backtest_at": tested_at,
             "universe_size": len(stocks),

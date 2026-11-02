@@ -47,6 +47,16 @@ def test_today_includes_the_market_regime(store):
     assert client_for(store).get("/api/today").json()["regime"]["label"] == "Stressed"
 
 
+def test_today_includes_the_market_type(store):
+    store.save_snapshot("2026-10-30", snapshot(market_type={"label": "Panic"}))
+    assert client_for(store).get("/api/today").json()["market_type"]["label"] == "Panic"
+
+
+def test_results_include_the_market_type(store):
+    store.save_snapshot("2026-10-30", snapshot(market_type={"label": "Panic"}))
+    assert client_for(store).get("/api/results").json()["market_type"]["label"] == "Panic"
+
+
 def test_today_returns_latest_snapshot(store):
     store.save_snapshot("2026-10-30", snapshot())
     assert client_for(store).get("/api/today").json()["data_date"] == "2026-10-30"

@@ -77,6 +77,23 @@ def test_fundamentals_keep_each_year_aligned(monkeypatch):
     assert history[1]["eps"] == 2.0
 
 
+def test_fetch_usdidr_history_uses_the_rate_symbol(monkeypatch):
+    seen = {}
+
+    def capture(symbol, years):
+        seen["symbol"] = symbol
+        return raw_frame()
+
+    monkeypatch.setattr(yahoo, "_download", capture)
+    assert list(yahoo.fetch_usdidr_history()["close"]) == [11.0]
+    assert seen["symbol"] == "USDIDR=X"
+
+
+def test_fetch_usdidr_history_tolerates_a_missing_adjusted_close(monkeypatch):
+    monkeypatch.setattr(yahoo, "_download", lambda symbol, years: raw_frame().drop(columns="Adj Close"))
+    assert list(yahoo.fetch_usdidr_history()["close"]) == [11.0]
+
+
 def test_fetch_index_uses_the_ihsg_symbol(monkeypatch):
     seen = {}
 

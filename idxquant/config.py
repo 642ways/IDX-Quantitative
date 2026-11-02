@@ -51,6 +51,12 @@ class Config:
     regime_min_history: int = 504
     regime_refit_days: int = 63
     regime_threshold: float = 0.5
+    # Market types (clustering)
+    cluster_groups: int = 4  # 5 or more split off groups too small to learn from
+    cluster_window_days: int = 21
+    cluster_min_weeks: int = 104
+    cluster_refit_weeks: int = 13
+    cluster_min_trades: int = 30  # Below this, results by market type are treated as noise
     # Pick filters
     min_up_long: float = 0.10
     min_up_other: float = 0.03

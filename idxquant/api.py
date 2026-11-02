@@ -23,6 +23,7 @@ EMPTY = {
     "picks": [],
     "stocks": {},
     "regime": None,
+    "market_type": None,
     "backtest": None,
     "skipped": [],
     "warnings": [],
@@ -121,6 +122,7 @@ def create_app(
         prices = {ticker: store.load_prices(ticker) for ticker in tickers}
         return {
             "regime": latest.get("regime"),
+            "market_type": latest.get("market_type"),
             "backtest": latest.get("backtest"),
             "backtest_at": latest.get("backtest_at"),
             "track_record": pipeline.track_record(snapshots, prices),

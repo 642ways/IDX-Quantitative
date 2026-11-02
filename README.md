@@ -22,7 +22,7 @@ Every number below is the current default from `idxquant/config.py`. These are s
 
 ### The daily flow
 
-Each refresh runs this once, and the result is saved as that day's snapshot. Monte Carlo and the market regime add information for you to read, but neither changes which stocks are picked or how they rank.
+Each refresh runs this once, and the result is saved as that day's snapshot. Monte Carlo, the market regime and market types add information for you to read, but none of them changes which stocks are picked or how they rank.
 
 ```mermaid
 flowchart TD
@@ -42,7 +42,9 @@ flowchart TD
     J --> M["Monte Carlo odds for each play"]
     M --> N["Stock page"]
     A --> O["Market regime from IHSG"]
-    O --> P["Today's market line"]
+    O --> P["Today's market lines"]
+    A --> Q["Market type from five measures"]
+    Q --> P
 ```
 
 ### Stock list
@@ -214,6 +216,40 @@ flowchart TD
 ```
 
 The model needs 504 days of data to start and is refitted every 63 trading days. Each day's reading uses only data up to that day, so it reacts after a move starts and doesn't predict turns. The regime is for information only and doesn't change the picks.
+
+### Market types
+
+The regime only looks at the index. Market types look at several measures at once, using a Gaussian mixture model that groups similar weeks.
+
+```mermaid
+flowchart TD
+    A["Every week, measure five things"] --> B["IHSG return over 21 days"]
+    A --> C["IHSG volatility over 21 days"]
+    A --> D["Share of stocks above their 50-day average"]
+    A --> E["USD/IDR change over 21 days"]
+    A --> F["Average correlation between stocks"]
+    B --> G["Scale using earlier weeks only"]
+    C --> G
+    D --> G
+    E --> G
+    F --> G
+    G --> H["Gaussian mixture model: 4 groups"]
+    H --> I{"Group volatility far above normal?"}
+    I -- "Yes, and falling" --> J["Panic"]
+    I -- "Yes, and rising" --> K["Rebound"]
+    I -- No --> L{"Strongly rising?"}
+    L -- Yes --> M["Rally"]
+    L -- No --> N{"Falling, or few stocks above average?"}
+    N -- Yes --> O["Weakening"]
+    N -- No --> P["Quiet"]
+```
+
+- **Why 4 groups:** more groups fit better, but 5 or more split off groups covering only 2 to 4% of weeks, too few to learn from.
+- **Named from their averages:** a group's name comes from what it looks like, not its number, so a type keeps its meaning after each refit.
+- **No look-ahead:** the model needs 104 weeks to start and is refitted every 13 weeks. Each week is judged by a model fitted on earlier weeks only.
+- **Thin results are hidden:** the Results page hides any signal and market type with fewer than 30 trades.
+
+Market types are for information only and don't change the picks.
 
 ### Backtest
 

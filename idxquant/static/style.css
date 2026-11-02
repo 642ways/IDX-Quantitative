@@ -18,6 +18,11 @@
   --warn-text: #6e5205;
   --path-target: #2a78d6;
   --path-stop: #eb6834;
+  --mt-rally: #2a78d6;
+  --mt-quiet: #b6b9bd;
+  --mt-weakening: #eda100;
+  --mt-panic: #c9402f;
+  --mt-rebound: #1baf7a;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -41,6 +46,11 @@
     --warn-text: #efd68c;
     --path-target: #3d87de;
     --path-stop: #d9622f;
+    --mt-rally: #3d87de;
+    --mt-quiet: #4c5158;
+    --mt-weakening: #b58a12;
+    --mt-panic: #d84a4a;
+    --mt-rebound: #22a87c;
   }
 }
 
@@ -229,6 +239,23 @@ ol.steps li { margin-bottom: 2px; }
 .detail th, .detail td { padding: 6px 8px; }
 .detail th:first-child, .detail td:first-child { padding-left: 0; }
 .detail th:last-child, .detail td:last-child { padding-right: 0; }
+
+.swatch.box { height: 10px; width: 14px; }
+i.mt-rally { background: var(--mt-rally); }
+i.mt-quiet { background: var(--mt-quiet); }
+i.mt-weakening { background: var(--mt-weakening); }
+i.mt-panic { background: var(--mt-panic); }
+i.mt-rebound { background: var(--mt-rebound); }
+.mc-chart .mt-rally { fill: var(--mt-rally); }
+.mc-chart .mt-quiet { fill: var(--mt-quiet); }
+.mc-chart .mt-weakening { fill: var(--mt-weakening); }
+.mc-chart .mt-panic { fill: var(--mt-panic); }
+.mc-chart .mt-rebound { fill: var(--mt-rebound); }
+.regime.type-rally { border-left-color: var(--mt-rally); }
+.regime.type-quiet { border-left-color: var(--mt-quiet); }
+.regime.type-weakening { border-left-color: var(--mt-weakening); }
+.regime.type-panic { border-left-color: var(--mt-panic); }
+.regime.type-rebound { border-left-color: var(--mt-rebound); }
 
 .chartnote { margin: 0 0 8px; }
 .legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-bottom: 8px; font-size: 12px; color: var(--muted); }

@@ -316,6 +316,34 @@ function methodTopics(cfg) {
       ],
     },
     {
+      id: "types",
+      title: "Market type",
+      intro: "The market regime gives a simple Calm or Stressed reading from the index. Market types look at several measures together, to describe what kind of market it is.",
+      items: [
+        {
+          name: "Market type",
+          means: "Which of several past kinds of market this week looks most like.",
+          formula: `Gaussian mixture model groups similar weeks into ${cfg.cluster_groups} groups\nRefit every ${cfg.cluster_refit_weeks} weeks, after at least ${cfg.cluster_min_weeks} weeks of data\nEach group is named from its average measures:\n  Panic: very high volatility, falling\n  Rebound: very high volatility, rising\n  Rally: strongly rising\n  Weakening: falling, or few stocks above average\n  Quiet: anything else`,
+          read: "Confidence is the model's probability for that type. Names come from what a group looks like, so a type keeps its meaning after each refit.",
+          caution: "It describes the market now and doesn't predict the next move. The names are labels on statistical groups, so they fit some weeks poorly. It's for information and doesn't change the picks.",
+        },
+        {
+          name: "Market type measures",
+          means: "The five things the model looks at each week.",
+          formula: `IHSG return over ${cfg.cluster_window_days} trading days\nIHSG volatility over ${cfg.cluster_window_days} days, per year\nShare of stocks above their 50-day average\nUSD/IDR change over ${cfg.cluster_window_days} days (up = weaker rupiah)\nAverage correlation between stocks over ${cfg.cluster_window_days} days`,
+          read: "Breadth shows whether most stocks are moving or a few large ones are carrying the index. High correlation means stocks are moving together, which is typical of panics.",
+          caution: "Values are measured against earlier weeks only. Today's index members are used for breadth and correlation, so past values leave out companies that have since left.",
+        },
+        {
+          name: "Signals by market type",
+          means: "How each signal did when it fired in each type of market.",
+          formula: `Label each past trade by the latest market type known on its signal day\nCompare trades, winners and average return\nResults under ${cfg.cluster_min_trades} trades are hidden`,
+          read: "On the Results page. A clear gap suggests a signal depends on market conditions.",
+          caution: "Each trade uses a model fitted only on earlier weeks. Rare market types have few trades, and results use today's index members.",
+        },
+      ],
+    },
+    {
       id: "picks",
       title: "How picks are chosen",
       intro: "This is how the app goes from the stock list to today's ranked table.",

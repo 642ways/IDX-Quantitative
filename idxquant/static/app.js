@@ -6,10 +6,13 @@ const refreshButton = document.getElementById("refresh");
 const KINDS = { long: "Long term", short: "Short term", pair: "Pair trade" };
 const PLAY_HELP = { long: "Long-term play", short: "Short-term play", pair: "Pair trade rules" };
 const ENDINGS = "Hits target, hits stop, neither in time";
+const MARKET_TYPES = ["Rally", "Quiet", "Weakening", "Panic", "Rebound"];
 let filter = "all";
 let polling = false;
 let chartPlays = [];
 let regimeData = null;
+let marketTypeData = null;
+let settings = null;
 let helpTopics = [];
 let helpTimer;
 const HELP_HIDE_DELAY = 200;
@@ -96,6 +99,20 @@ function regimeStrip(regime) {
   </div>`;
 }
 
+const change = (logValue) => (missing(logValue) ? null : Math.exp(logValue) - 1);
+
+function marketTypeStrip(type, dataDate) {
+  if (!type) return "";
+  const f = type.features;
+  const measured = type.history[type.history.length - 1][0];
+  const older = measured < dataDate ? ` Latest IHSG reading is from ${esc(measured)}.` : "";
+  return `<div class="regime type-${esc(type.label.toLowerCase())}">
+    <b>Market type: ${esc(type.label)}</b>${help("Market type")}
+    <span>${pct(type.confidence, 0)} confidence, since ${esc(type.since)}. IHSG ${signedPct(change(f.ret))} over 21 trading days,
+    ${pct(f.breadth, 0)} of stocks above their 50-day average.${older}</span>
+  </div>`;
+}
+
 function renderToday(today) {
   const picks = today.picks.filter((p) => filter === "all" || p.kind === filter);
   const buttons = [["all", "All"], ...Object.entries(KINDS)]
@@ -116,6 +133,7 @@ function renderToday(today) {
   app.innerHTML = `<h1>Today's picks</h1>
     <p class="sub">Ranked by reward to risk after costs${help("Ranking", "ranking")}. Click a row for the full playbook.</p>
     ${regimeStrip(today.regime)}
+    ${marketTypeStrip(today.market_type, today.data_date)}
     <div class="filters">${buttons}</div>${body}`;
 
   app.querySelectorAll("[data-filter]").forEach((button) => {
@@ -338,10 +356,53 @@ function drawRegimeChart(holder, regime) {
   });
 }
 
+function drawTypeStrip(holder, type) {
+  const weeks = type.history;
+  const width = holder.clientWidth;
+  const height = 70;
+  const stripHeight = 36;
+  const cell = width / weeks.length;
+  const cells = weeks
+    .map(([, label], i) => `<rect class="mt-${label.toLowerCase()}" x="${(i * cell).toFixed(2)}" y="0" width="${(cell + 0.5).toFixed(2)}" height="${stripHeight}"></rect>`)
+    .join("");
+  const yearStep = width < 520 ? 2 : 1;
+  const starts = weeks.flatMap(([day], i) => (i && day.slice(0, 4) !== weeks[i - 1][0].slice(0, 4) ? [i] : []));
+  const years = starts
+    .filter((_, i) => i % yearStep === 0)
+    .map((i) => `<text class="axis" x="${i * cell}" y="${stripHeight + 18}" text-anchor="middle">${weeks[i][0].slice(0, 4)}</text>`)
+    .join("");
+  holder.innerHTML = `<svg width="${width}" height="${height}" role="img" aria-label="Market type for each week. The table below lists them.">
+      ${cells}${years}
+      <line class="cross" y1="0" y2="${stripHeight}" visibility="hidden"></line>
+      <rect class="hit" x="0" y="0" width="${width}" height="${stripHeight}"></rect>
+    </svg><div class="tip" hidden></div>`;
+
+  const cross = holder.querySelector(".cross");
+  const tip = holder.querySelector(".tip");
+  const hit = holder.querySelector(".hit");
+  hit.addEventListener("pointermove", (event) => {
+    const box = holder.getBoundingClientRect();
+    const nearest = Math.max(0, Math.min(weeks.length - 1, Math.floor((event.clientX - box.left) / cell)));
+    const left = (nearest + 0.5) * cell;
+    cross.setAttribute("x1", left);
+    cross.setAttribute("x2", left);
+    cross.setAttribute("visibility", "visible");
+    tip.hidden = false;
+    tip.innerHTML = `<b>${weeks[nearest][0]}</b><br>${esc(weeks[nearest][1])}`;
+    tip.style.left = `${Math.min(left + 10, Math.max(width - 110, 0))}px`;
+  });
+  hit.addEventListener("pointerleave", () => {
+    tip.hidden = true;
+    cross.setAttribute("visibility", "hidden");
+  });
+}
+
 function drawCharts() {
   app.querySelectorAll(".mc-chart[data-index]").forEach((holder) => drawChart(holder, chartPlays[holder.dataset.index]));
   const holder = app.querySelector(".regime-chart");
   if (holder && regimeData) drawRegimeChart(holder, regimeData);
+  const strip = app.querySelector(".type-chart");
+  if (strip && marketTypeData) drawTypeStrip(strip, marketTypeData);
 }
 
 function metric(label, value, helpKey) {
@@ -544,6 +605,47 @@ function regimePanels(regime, splits) {
     </section>${table}`;
 }
 
+function typeRows(signal, split) {
+  return MARKET_TYPES.filter((label) => split && split[label])
+    .map((label) => {
+      const r = split[label];
+      const measured = r.trades >= settings.cluster_min_trades;
+      const results = measured
+        ? `<td class="n">${pct(r.win_rate, 0)}</td><td class="n">${signedPct(r.avg_return)}</td>`
+        : `<td colspan="2" class="n">Too few trades</td>`;
+      return `<tr><td>${signal}</td><td>${label}</td><td class="n">${r.trades}</td>${results}</tr>`;
+    })
+    .join("");
+}
+
+function marketTypePanels(type, splits) {
+  if (!type) return "";
+  const key = (label) => `<span class="key"><i class="swatch box mt-${label.toLowerCase()}"></i>${label}</span>`;
+  const present = MARKET_TYPES.filter((label) => type.groups.some((group) => group.label === label));
+  const groups = present
+    .map((label) => type.groups.find((group) => group.label === label))
+    .map((g) => `<tr><td>${esc(g.label)}</td><td class="n">${g.weeks}</td><td class="n">${pct(g.share, 0)}</td>
+      <td class="n">${signedPct(change(g.ret))}</td><td class="n">${pct(g.vol, 0)}</td><td class="n">${pct(g.breadth, 0)}</td>
+      <td class="n">${signedPct(change(g.rupiah))}</td><td class="n">${g.corr.toFixed(2)}</td></tr>`)
+    .join("");
+  const signals = splits
+    ? `<section class="panel flat full"><h2>Signals by market type${help("Signals by market type")}</h2>
+        <table><thead><tr><th>Signal</th><th>Market type</th><th class="n">Trades</th><th class="n">Winners</th><th class="n">Average</th></tr></thead>
+        <tbody>${typeRows("Short term", splits.short)}${typeRows("Pair trade", splits.pair)}${typeRows("Momentum, per month held", splits.momentum)}</tbody></table>
+        <p class="note" style="padding:0 16px 16px">Results with fewer than ${settings.cluster_min_trades} trades are hidden, because they'd mostly be noise. Market types are for information and don't change the picks.</p>
+      </section>`
+    : "";
+  return `<section class="panel full"><h2>Market type history${help("Market type")}</h2>
+      <p class="note chartnote">Now ${esc(type.label)}. Each stripe is one week, judged using only earlier weeks.</p>
+      <div class="legend">${present.map(key).join("")}</div>
+      <div class="mc-chart type-chart"></div>
+    </section>
+    <section class="panel flat full"><h2>What each market type looks like${help("Market type measures")}</h2>
+      <table><thead><tr><th>Market type</th><th class="n">Weeks</th><th class="n">Share</th><th class="n">IHSG, 21 days</th><th class="n">Volatility</th>
+      <th class="n">Above 50-day</th><th class="n">USD/IDR, 21 days</th><th class="n">Correlation</th></tr></thead><tbody>${groups}</tbody></table>
+    </section>${signals}`;
+}
+
 function renderResults(results) {
   const backtest = results.backtest || {};
   const tested = results.backtest_at ? `Tested ${esc(results.backtest_at)}, on up to 10 years of prices. ` : "";
@@ -574,10 +676,12 @@ function renderResults(results) {
         companies that collapsed aren't in it. Drawdown compounds each month's average trade. Past results don't predict future ones.</p>
       </section>
       ${regimePanels(results.regime, backtest.regimes)}
+      ${marketTypePanels(results.market_type, backtest.market_types)}
       ${calibrationPanel(backtest.calibration)}
       <section class="panel flat full"><h2>Track record of real picks</h2>${record}</section>
     </div>${skipped}`;
   regimeData = results.regime;
+  marketTypeData = results.market_type;
   drawCharts();
 }
 
@@ -655,7 +759,10 @@ async function route() {
   const hash = location.hash || "#/";
   hideHelp();
   try {
-    if (!helpTopics.length) helpTopics = methodTopics(await getJson("/api/methods"));
+    if (!helpTopics.length) {
+      settings = await getJson("/api/methods");
+      helpTopics = methodTopics(settings);
+    }
     const today = await getJson("/api/today");
     showStatus(today);
     const match = hash.match(/^#\/stock\/(.+)$/);

@@ -8,6 +8,7 @@ import pandas as pd
 import yfinance as yf
 
 INDEX_SYMBOL = "^JKSE"
+FX_SYMBOL = "USDIDR=X"
 TIMESERIES_URL ="https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{symbol}"
 YEAR_FIELDS = {
     "revenue": "annualTotalRevenue",
@@ -73,11 +74,18 @@ def fetch_index(years: int = 10) -> pd.DataFrame:
     return _prices(INDEX_SYMBOL, years)
 
 
-def _prices(symbol: str, years: int) -> pd.DataFrame:
+def fetch_usdidr_history(years: int = 10) -> pd.DataFrame:
+    """Exchange rates have no dividends, so a missing adjusted close doesn't matter."""
+    return _prices(FX_SYMBOL, years, needs_adjusted=False)
+
+
+def _prices(symbol: str, years: int, needs_adjusted: bool = True) -> pd.DataFrame:
     try:
         raw = _download(symbol, years)
         if raw is None or raw.empty:
             return pd.DataFrame()
+        if not needs_adjusted and "Adj Close" not in raw:
+            raw = raw.assign(**{"Adj Close": raw["Close"]})
         frame = raw.rename(columns=PRICE_RENAMES)[list(PRICE_RENAMES.values())]
         index = pd.DatetimeIndex(frame.index)
         frame.index = (index.tz_localize(None) if index.tz is not None else index).normalize()
