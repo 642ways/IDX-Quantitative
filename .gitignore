@@ -3,6 +3,7 @@ data/
 __pycache__/
 .pytest_cache/
 .superpowers/
+docs/superpowers/
 .claude/
 .vscode/
 .idea/
