@@ -1,0 +1,63 @@
+name: Daily refresh
+
+on:
+  schedule:
+    - cron: "0 11 * * 1-5" # 18:00 WIB on weekdays. GitHub can start scheduled runs late.
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+
+      - name: Install packages
+        run: pip install -r requirements.txt
+
+      - name: Check Yahoo can be reached
+        run: python -m idxquant.check
+
+      - name: Restore the database
+        run: |
+          mkdir -p data
+          if git fetch --depth 1 origin data; then
+            git show origin/data:idxquant.sqlite > data/idxquant.sqlite
+          else
+            echo "No saved database yet, so this run starts fresh."
+          fi
+
+      - name: Refresh and build the site
+        id: refresh
+        continue-on-error: true
+        run: python -m idxquant.daily --data data/idxquant.sqlite --out site
+
+      - name: Save the database
+        run: |
+          mkdir -p saved
+          cp data/idxquant.sqlite saved/
+          cp site/vercel.json saved/
+          bash scripts/publish-branch.sh data saved
+
+      - name: Publish the site
+        run: bash scripts/publish-branch.sh site site
+
+      - name: Report a failed refresh
+        if: steps.refresh.outcome == 'failure'
+        run: |
+          echo "The refresh failed, so the site still shows the last good result."
+          exit 1

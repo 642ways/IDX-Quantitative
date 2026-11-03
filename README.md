@@ -285,6 +285,52 @@ The app needs one always-on instance and persistent storage. Don't run more than
 
 If the check fails, Yahoo is probably blocking the host's addresses. Try another host or region, or use a paid data source by replacing `idxquant/yahoo.py`, which is the only module that fetches data.
 
+## Run it on GitHub Actions and Vercel
+
+Instead of a server that's always on, GitHub Actions can refresh the data once a day and Vercel can host the pages as a static website.
+
+```mermaid
+flowchart LR
+    A["GitHub Actions, weekdays 18:00 WIB"] --> B["Restore the database from the data branch"]
+    B --> C["Refresh and export the pages as JSON"]
+    C --> D["Save the database to the data branch"]
+    C --> E["Push the website to the site branch"]
+    E --> F["Vercel publishes it"]
+```
+
+- **`data` branch:** holds only the database. Each run replaces it with one fresh commit, so it doesn't build up history.
+- **`site` branch:** holds the finished website. Each run replaces it the same way.
+- **The static site:** shows the same pages, but has no Refresh button because data updates on a schedule.
+
+### Set up GitHub Actions
+
+1. Merge this into `main`. GitHub only runs scheduled workflows from the default branch.
+2. In the repository, open **Settings > Actions > General > Workflow permissions** and choose **Read and write permissions**, so the workflow can push the `data` and `site` branches.
+3. Open **Actions > Daily refresh > Run workflow** to start the first run by hand. It takes several minutes, because it builds the backtests from scratch.
+4. Check the **Check Yahoo can be reached** step. If it fails, Yahoo is blocking GitHub's servers and this setup won't work as it is.
+
+After that, it runs every weekday at 18:00 WIB. GitHub sometimes starts scheduled runs late. A failed refresh still publishes the last good result and marks the run as failed, so you'll get GitHub's failure email.
+
+### Set up Vercel
+
+1. In Vercel, choose **Add New > Project** and import this repository.
+2. Set **Framework Preset** to **Other**. Leave the build command and output directory empty.
+3. Deploy, then open **Settings > Git** and set the **Production Branch** to `site`.
+4. Redeploy once, or wait for the next daily run.
+
+`vercel.json` tells Vercel to skip every branch except `site`, so pushes to `main` or `data` don't create deployments.
+
+The Vercel link is public, so anyone who finds it can see the picks. Vercel's password protection is a paid option. Don't share the link widely, for the investment advice reasons above.
+
+### Try it locally
+
+```bash
+python -m idxquant.daily --out site
+python -m http.server 8790 --directory site
+```
+
+Then open http://127.0.0.1:8790.
+
 ## Keeping it up to date
 
 - **Stock list:** edit `idxquant/universe.csv` by hand when the IDX80 changes. The next change is due after 29 January 2027.

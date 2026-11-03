@@ -8,3 +8,7 @@ data
 docs
 tests
 *.bat
+site
+.github
+scripts
+vercel.json
