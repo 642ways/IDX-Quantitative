@@ -13,3 +13,4 @@ docs/superpowers/
 *.sqlite-journal
 *.log
 Thumbs.db
+site/

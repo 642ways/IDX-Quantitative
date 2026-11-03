@@ -66,6 +66,38 @@ class Refresher:
             self.start()
 
 
+def today_payload(snapshot: dict | None, warnings: list[str] | None = None, refreshing: bool = False) -> dict:
+    snapshot = snapshot or EMPTY
+    return {key: snapshot.get(key) for key in EMPTY} | {
+        "warnings": warnings or snapshot["warnings"],
+        "refreshing": refreshing,
+    }
+
+
+def results_payload(store) -> dict:
+    snapshots = store.all_snapshots()
+    latest = snapshots[-1] if snapshots else EMPTY
+    tickers = {pick["ticker"] for snapshot in snapshots for pick in snapshot["picks"]}
+    prices = {ticker: store.load_prices(ticker) for ticker in tickers}
+    return {
+        "regime": latest.get("regime"),
+        "market_type": latest.get("market_type"),
+        "backtest": latest.get("backtest"),
+        "backtest_at": latest.get("backtest_at"),
+        "track_record": pipeline.track_record(snapshots, prices),
+        "skipped": latest.get("skipped", []),
+        "universe_size": latest.get("universe_size"),
+    }
+
+
+def methods_payload() -> dict:
+    return asdict(CONFIG) | {
+        "min_sector_size": MIN_SECTOR_SIZE,
+        "short_trend_days": SHORT_TREND_DAYS,
+        "short_breakout_days": SHORT_BREAKOUT_DAYS,
+    }
+
+
 def _start_schedule(refresher: Refresher, seconds: float) -> threading.Event:
     """Keeps the data fresh when nobody has the page open."""
     stop = threading.Event()
@@ -103,9 +135,7 @@ def create_app(
     def today():
         if auto_refresh:
             refresher.refresh_if_due()
-        snapshot = store.latest_snapshot() or EMPTY
-        warnings = refresher.warnings or snapshot["warnings"]
-        return {key: snapshot.get(key) for key in EMPTY} | {"warnings": warnings, "refreshing": refresher.running}
+        return today_payload(store.latest_snapshot(), refresher.warnings, refresher.running)
 
     @app.get("/api/stock/{ticker}")
     def stock(ticker: str):
@@ -116,19 +146,7 @@ def create_app(
 
     @app.get("/api/results")
     def results():
-        snapshots = store.all_snapshots()
-        latest = snapshots[-1] if snapshots else EMPTY
-        tickers = {pick["ticker"] for snapshot in snapshots for pick in snapshot["picks"]}
-        prices = {ticker: store.load_prices(ticker) for ticker in tickers}
-        return {
-            "regime": latest.get("regime"),
-            "market_type": latest.get("market_type"),
-            "backtest": latest.get("backtest"),
-            "backtest_at": latest.get("backtest_at"),
-            "track_record": pipeline.track_record(snapshots, prices),
-            "skipped": latest.get("skipped", []),
-            "universe_size": latest.get("universe_size"),
-        }
+        return results_payload(store)
 
     @app.post("/api/refresh")
     def refresh():
@@ -142,11 +160,7 @@ def create_app(
 
     @app.get("/api/methods")
     def methods():
-        return asdict(CONFIG) | {
-            "min_sector_size": MIN_SECTOR_SIZE,
-            "short_trend_days": SHORT_TREND_DAYS,
-            "short_breakout_days": SHORT_BREAKOUT_DAYS,
-        }
+        return methods_payload()
 
     @app.get("/")
     def index():

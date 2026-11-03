@@ -3,6 +3,8 @@ const app = document.getElementById("app");
 const banner = document.getElementById("banner");
 const dataDate = document.getElementById("data-date");
 const refreshButton = document.getElementById("refresh");
+// The static site on Vercel reads daily JSON files instead of asking a running server
+const STATIC_SITE = document.querySelector('meta[name="idx-mode"]')?.content === "static";
 const KINDS = { long: "Long term", short: "Short term", pair: "Pair trade" };
 const PLAY_HELP = { long: "Long-term play", short: "Short-term play", pair: "Pair trade rules" };
 const ENDINGS = "Hits target, hits stop, neither in time";
@@ -39,7 +41,7 @@ const topicHelp = (topic, label) => help(`topic:${topic}`, label);
 const tag = (kind) => `<span class="tag ${esc(kind)}">${esc(KINDS[kind] || kind)}</span>`;
 
 async function getJson(url) {
-  const response = await fetch(url);
+  const response = await fetch(STATIC_SITE ? `${url}.json` : url);
   if (!response.ok) throw new Error(String(response.status));
   return response.json();
 }
@@ -48,6 +50,11 @@ function showStatus(today) {
   dataDate.textContent = today.data_date ? `Data as of ${today.data_date}` : "No data yet";
   banner.hidden = !today.warnings.length;
   banner.textContent = today.warnings.join(" ");
+  if (STATIC_SITE) {
+    refreshButton.hidden = true;
+    if (today.data_date) dataDate.textContent += ". Updates on weekdays after 18:00 WIB";
+    return;
+  }
   refreshButton.disabled = today.refreshing;
   refreshButton.textContent = today.refreshing ? "Refreshing…" : "Refresh";
   if (today.refreshing) pollRefresh();
