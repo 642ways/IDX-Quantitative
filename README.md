@@ -1,6 +1,6 @@
 # IDX Quant
 
-A personal app that ranks Indonesian (IDX80) stocks after each trading day, using factor scores, statistical arbitrage, Monte Carlo simulation and market regime detection. Each pick comes with a playbook.
+A personal app that ranks about 137 liquid Indonesian stocks (the IDX80 plus other actively traded names) after each trading day, using factor scores, statistical arbitrage, Monte Carlo simulation and market regime detection. Each pick comes with a playbook.
 
 This is model output, not personal financial advice. It doesn't know your money or risk limits, and it can be wrong. The app has no login, so anyone with its link can open it. Don't publish the link: sharing recommendations publicly or with paying users may fall under Indonesian investment advice rules.
 
@@ -51,7 +51,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A["IDX80 list in universe.csv"] --> B{"Did Yahoo return prices?"}
+    A["Stock list in universe.csv"] --> B{"Did Yahoo return prices?"}
     B -- No --> X["Skipped, with the reason recorded"]
     B -- Yes --> C{"Traded on the latest session?"}
     C -- No --> X
@@ -333,5 +333,5 @@ Then open http://127.0.0.1:8790.
 
 ## Keeping it up to date
 
-- **Stock list:** edit `idxquant/universe.csv` by hand when the IDX80 changes. The next change is due after 29 January 2027.
+- **Stock list:** edit `idxquant/universe.csv` by hand. It holds the IDX80 (next change due after 29 January 2027) plus other stocks that traded at least about Rp 4bn a day when the list was compiled. Stocks that later go quiet are dropped automatically by the liquidity filter.
 - **Rules:** thresholds are in `idxquant/config.py`.

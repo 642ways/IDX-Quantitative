@@ -351,7 +351,7 @@ function methodTopics(cfg) {
         {
           name: "Stock list",
           means: "The stocks the app looks at.",
-          formula: `IDX80 members, then keep stocks with:\n  median daily value of at least Rp ${billions} billion over 20 days\n  at least ${cfg.min_history_days} days of prices\n  no zero-volume day in the last ${cfg.suspension_window} days\n  a trade on the latest session`,
+          formula: `IDX80 members plus other liquid stocks (about 137), then keep stocks with:\n  median daily value of at least Rp ${billions} billion over 20 days\n  at least ${cfg.min_history_days} days of prices\n  no zero-volume day in the last ${cfg.suspension_window} days\n  a trade on the latest session`,
           read: "Thin or suspended stocks give false signals, so they're left out. The Results page lists which ones.",
           caution: "The list is kept by hand and needs updating when the index changes.",
         },

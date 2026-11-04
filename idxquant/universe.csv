@@ -1,4 +1,4 @@
-# IDX80 for 2 Nov 2026 - 29 Jan 2027. Aug-Oct 2026 list from investasiku.id, with the Oct 2026 changes reported by Kontan (in: AALI SMDR TINS TKIM; out: CUAN HEAL MIKA SMRA). Compiled 2026-11-02. Sector groups are hand-assigned for pair and value comparisons.
+# IDX80 for 2 Nov 2026 - 29 Jan 2027 (Aug-Oct 2026 list from investasiku.id, with the Oct 2026 changes reported by Kontan: in AALI SMDR TINS TKIM; out CUAN HEAL MIKA SMRA), plus 57 other stocks that traded at least about Rp 4bn a day over the 60 days to 4 Nov 2026 and have 2+ years of Yahoo history. Compiled 2026-11-04. Sector groups are hand-assigned for pair and value comparisons.
 ticker,name,sector
 AADI,Adaro Andalan Indonesia,Coal
 AALI,Astra Agro Lestari,Plantation
@@ -9,74 +9,131 @@ AKRA,AKR Corporindo,Energy
 AMMN,Amman Mineral Internasional,Metals
 AMRT,Sumber Alfaria Trijaya,Retail
 ANTM,Aneka Tambang,Metals
+ARCI,Archi Indonesia,Metals
 ARTO,Bank Jago,Banks
 ASII,Astra International,Industrial
+ASSA,Adi Sarana Armada,Transport
+AUTO,Astra Otoparts,Industrial
 BBCA,Bank Central Asia,Banks
 BBNI,Bank Negara Indonesia,Banks
 BBRI,Bank Rakyat Indonesia,Banks
 BBTN,Bank Tabungan Negara,Banks
+BBYB,Bank Neo Commerce,Banks
+BDMN,Bank Danamon Indonesia,Banks
 BFIN,BFI Finance Indonesia,Finance
+BIPI,Astrindo Nusantara Infrastruktur,Energy
 BKSL,Sentul City,Property
 BMRI,Bank Mandiri,Banks
+BMTR,Global Mediacom,Technology
+BNBR,Bakrie & Brothers,Industrial
+BNGA,Bank CIMB Niaga,Banks
+BREN,Barito Renewables Energy,Energy
+BRIS,Bank Syariah Indonesia,Banks
 BRMS,Bumi Resources Minerals,Metals
 BRPT,Barito Pacific,Chemicals
 BSDE,Bumi Serpong Damai,Property
+BSSR,Baramulti Suksessarana,Coal
+BTPS,Bank BTPN Syariah,Banks
 BUKA,Bukalapak.com,Technology
+BULL,Buana Lintas Lautan,Transport
 BUMI,Bumi Resources,Coal
+BUVA,Bukit Uluwatu Villa,Property
+BWPT,Eagle High Plantations,Plantation
+BYAN,Bayan Resources,Coal
 CBDK,Bangun Kosambi Sukses,Property
+CBRE,Cakra Buana Resources Energi,Energy
+CLEO,Sariguna Primatirta,Consumer
 CMRY,Cisarua Mountain Dairy,Consumer
 CPIN,Charoen Pokphand Indonesia,Consumer
 CTRA,Ciputra Development,Property
+CUAN,Petrindo Jaya Kreasi,Coal
 DEWA,Darma Henwa,Coal
+DMAS,Puradelta Lestari,Property
 DSNG,Dharma Satya Nusantara,Plantation
+DSSA,Dian Swastatika Sentosa,Coal
 ELSA,Elnusa,Energy
 EMTK,Elang Mahkota Teknologi,Technology
 ENRG,Energi Mega Persada,Energy
 ERAA,Erajaya Swasembada,Retail
 ESSA,ESSA Industries Indonesia,Chemicals
 EXCL,XLSmart Telecom Sejahtera,Telecom
+FILM,MD Entertainment,Technology
 GGRM,Gudang Garam,Consumer
+GJTL,Gajah Tunggal,Industrial
 GOTO,GoTo Gojek Tokopedia,Technology
+HEAL,Medikaloka Hermina,Healthcare
+HMSP,HM Sampoerna,Consumer
 HRTA,Hartadinata Abadi,Retail
 HRUM,Harum Energy,Coal
 ICBP,Indofood CBP Sukses Makmur,Consumer
+IMPC,Impack Pratama Industri,Industrial
 INCO,Vale Indonesia,Metals
 INDF,Indofood Sukses Makmur,Consumer
 INDY,Indika Energy,Coal
+INET,Sinergi Inti Andalan Prima,Telecom
 INKP,Indah Kiat Pulp & Paper,Paper
+INTP,Indocement Tunggal Prakarsa,Cement
 ISAT,Indosat,Telecom
 ITMG,Indo Tambangraya Megah,Coal
+JARR,Jhonlin Agro Raya,Plantation
 JPFA,Japfa Comfeed Indonesia,Consumer
 JSMR,Jasa Marga,Infrastructure
+KEEN,Kencana Energi Lestari,Energy
 KIJA,Kawasan Industri Jababeka,Property
 KLBF,Kalbe Farma,Healthcare
 KPIG,MNC Land,Property
+LPKR,Lippo Karawaci,Property
 LSIP,PP London Sumatra Indonesia,Plantation
 MAPA,MAP Aktif Adiperkasa,Retail
 MAPI,Mitra Adiperkasa,Retail
+MARK,Mark Dynamics Indonesia,Industrial
 MBMA,Merdeka Battery Materials,Metals
+MBSS,Mitrabahtera Segara Sejati,Transport
 MDKA,Merdeka Copper Gold,Metals
 MEDC,Medco Energi Internasional,Energy
+MIKA,Mitra Keluarga Karyasehat,Healthcare
+MINA,Sanurhasta Mitra,Property
+MNCN,Media Nusantara Citra,Technology
+MSIN,MNC Digital Entertainment,Technology
+MTEL,Dayamitra Telekomunikasi,Telecom
 MYOR,Mayora Indah,Consumer
 NCKL,Trimegah Bangun Persada,Metals
+NICL,PAM Mineral,Metals
+NISP,Bank OCBC NISP,Banks
+PANI,Pantai Indah Kapuk Dua,Property
 PGAS,Perusahaan Gas Negara,Energy
 PGEO,Pertamina Geothermal Energy,Energy
 PNLF,Panin Financial,Finance
+POWR,Cikarang Listrindo,Energy
+PSAB,J Resources Asia Pasifik,Metals
 PTBA,Bukit Asam,Coal
 PTRO,Petrosea,Coal
 PWON,Pakuwon Jati,Property
 RAJA,Rukun Raharja,Energy
 RATU,Raharja Energi Cepu,Energy
+RMKE,RMK Energy,Coal
 SCMA,Surya Citra Media,Technology
+SGER,Sumber Global Energy,Energy
+SIDO,Industri Jamu dan Farmasi Sido Muncul,Healthcare
+SIMP,Salim Ivomas Pratama,Plantation
 SMDR,Samudera Indonesia,Transport
 SMGR,Semen Indonesia,Cement
+SMRA,Summarecon Agung,Property
+SOCI,Soechi Lines,Transport
+SRTG,Saratoga Investama Sedaya,Finance
 SSIA,Surya Semesta Internusa,Property
+SSMS,Sawit Sumbermas Sarana,Plantation
 TAPG,Triputra Agro Persada,Plantation
 TINS,Timah,Metals
 TKIM,Pabrik Kertas Tjiwi Kimia,Paper
 TLKM,Telkom Indonesia,Telecom
+TOBA,TBS Energi Utama,Coal
+TOTL,Total Bangun Persada,Infrastructure
 TOWR,Sarana Menara Nusantara,Telecom
 TPIA,Chandra Asri Pacific,Chemicals
+TRIN,Perintis Triniti Properti,Property
+ULTJ,Ultrajaya Milk Industry,Consumer
 UNTR,United Tractors,Industrial
 UNVR,Unilever Indonesia,Consumer
+VKTR,VKTR Teknologi Mobilitas,Industrial
 WIFI,Solusi Sinergi Digital,Telecom
