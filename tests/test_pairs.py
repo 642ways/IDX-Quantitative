@@ -77,3 +77,28 @@ def test_price_at_higher_z_is_higher():
     pair = analyse_pair(a, b)
     other = np.exp(b.iloc[-1])
     assert price_at_z(pair, -0.5, other) > price_at_z(pair, -3.5, other)
+
+
+def test_recent_gap_history_ends_at_todays_gap():
+    a, b = cointegrated()
+    pair = analyse_pair(a, b, ("A", "B"))
+    assert len(pair.recent_z) == 60
+    assert pair.recent_z[-1] == pytest.approx(pair.z, abs=0.01)
+
+
+def test_a_fit_that_fails_to_converge_is_not_a_pair(monkeypatch):
+    def no_convergence(*args, **kwargs):
+        raise np.linalg.LinAlgError("SVD did not converge in Linear Least Squares")
+
+    a, b = cointegrated()
+    monkeypatch.setattr("idxquant.pairs.np.polyfit", no_convergence)
+    assert analyse_pair(a, b, ("A", "B")) is None
+    assert find_pairs({"A": a, "B": b}, {"A": "Coal", "B": "Coal"}) == []
+
+
+def test_a_stock_stuck_at_one_price_is_not_paired():
+    a, b = cointegrated()
+    stuck = pd.Series(np.log(50.0), index=a.index)
+    stuck.iloc[::40] = np.log(51.0)  # A trade at another price now and then, as on a stock stuck at its floor
+    assert analyse_pair(stuck, b, ("S", "B")) is None
+    assert analyse_pair(b, stuck, ("B", "S")) is None

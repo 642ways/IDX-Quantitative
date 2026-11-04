@@ -1,5 +1,5 @@
 """Statistical arbitrage: find cointegrated same-sector pairs and measure how far apart they are."""
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from itertools import combinations
 import math
 
@@ -11,6 +11,7 @@ from statsmodels.tsa.stattools import coint
 from idxquant.config import CONFIG
 
 MIN_OVERLAP_DAYS = 252
+MIN_MOVING_SHARE = 0.2  # A stock whose price changed on fewer days than this was stuck, not trading
 
 
 @dataclass
@@ -26,6 +27,7 @@ class Pair:
     z: float
     spread_mean: float
     spread_std: float
+    recent_z: tuple = field(default=())  # The gap on each of the last z_window days, ending with z
 
 
 def _half_life(spread: pd.Series) -> float | None:
@@ -37,11 +39,18 @@ def _half_life(spread: pd.Series) -> float | None:
 
 def analyse_pair(a: pd.Series, b: pd.Series, names: tuple[str, str] = ("a", "b"), cfg=CONFIG) -> Pair | None:
     """Both inputs are log prices."""
+    try:
+        return _analyse(a, b, names, cfg)
+    except np.linalg.LinAlgError:
+        return None  # A price stuck near flat for years can leave the fit unsolvable, and that's no pair either
+
+
+def _analyse(a: pd.Series, b: pd.Series, names: tuple[str, str], cfg) -> Pair | None:
     joined = pd.concat([a, b], axis=1, join="inner").dropna().iloc[-cfg.pair_lookback :]
     if len(joined) < MIN_OVERLAP_DAYS:
         return None
     y, x = joined.iloc[:, 0], joined.iloc[:, 1]
-    if y.std() == 0 or x.std() == 0:
+    if min((y.diff() != 0).mean(), (x.diff() != 0).mean()) < MIN_MOVING_SHARE:
         return None
 
     beta, alpha = np.polyfit(x.to_numpy(), y.to_numpy(), 1)
@@ -54,7 +63,8 @@ def analyse_pair(a: pd.Series, b: pd.Series, names: tuple[str, str] = ("a", "b")
         return None
 
     pvalue = coint(y, x, trend="c", maxlag=1, autolag=None)[1]
-    z = (spread.iloc[-1] - recent.mean()) / recent.std()
+    gaps = (recent - recent.mean()) / recent.std()
+    z = gaps.iloc[-1]
     return Pair(
         a=names[0],
         b=names[1],
@@ -65,6 +75,7 @@ def analyse_pair(a: pd.Series, b: pd.Series, names: tuple[str, str] = ("a", "b")
         z=float(z),
         spread_mean=float(recent.mean()),
         spread_std=float(recent.std()),
+        recent_z=tuple(round(float(gap), 2) for gap in gaps),
     )
 
 

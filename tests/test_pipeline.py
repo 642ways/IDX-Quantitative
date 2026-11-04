@@ -434,3 +434,25 @@ def test_track_record_stops_at_first_level_hit():
     record = track_record([{"data_date": "2026-10-29", "picks": [pick]}], {"AAAA": prices})
     assert record[0]["outcome"] == "Target hit"
     assert record[0]["return"] == pytest.approx((1100 * 0.9975) / (1000 * 1.0015) - 1)
+
+
+def test_snapshot_carries_backtest_equity_curves(tmp_path):
+    _, snapshot = execute(tmp_path, FakeFetcher({"AAAA": frame(1)}), ["AAAA"])
+    assert set(snapshot["backtest"]["equity"]) == {"short", "pair", "momentum"}
+
+
+def test_old_backtest_without_equity_curves_is_recomputed(tmp_path):
+    store, first = execute(tmp_path, FakeFetcher({"AAAA": frame(1)}), ["AAAA"])
+    del first["backtest"]["equity"]
+    store.save_snapshot(first["data_date"], first)
+    second = run(store, FakeFetcher({"AAAA": frame(1)}), FRIDAY_EVENING + timedelta(days=3), CONFIG, universe(["AAAA"]))
+    assert "equity" in second["backtest"]
+
+
+def test_pair_rows_flip_the_gap_history_for_the_rich_side():
+    from idxquant.pairs import Pair
+    from idxquant.pipeline import _pair_rows
+
+    pair = Pair("AAAA", "BBBB", 1.0, 0.0, 0.01, 8.0, -2.2, 0.0, 0.05, recent_z=(-1.0, -2.2))
+    assert _pair_rows([pair], "AAAA")[0]["gap_history"] == [-1.0, -2.2]
+    assert _pair_rows([pair], "BBBB")[0]["gap_history"] == [1.0, 2.2]

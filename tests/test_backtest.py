@@ -6,6 +6,7 @@ from idxquant.backtest import (
     backtest_momentum,
     backtest_pairs,
     backtest_short,
+    equity_curve,
     momentum_months,
     short_signals,
     short_trades,
@@ -162,3 +163,17 @@ def test_no_lookahead_in_pair_formation():
 def test_momentum_backtest_runs_and_includes_costs():
     prices = {name: market(i) for i, name in enumerate("ABCDEF")}
     assert backtest_momentum(prices)["trades"] > 0
+
+
+def test_equity_curve_compounds_each_months_average():
+    dated = [
+        (pd.Timestamp("2026-01-05"), 0.10),
+        (pd.Timestamp("2026-01-20"), -0.10),
+        (pd.Timestamp("2026-02-03"), 0.10),
+        (pd.Timestamp("2026-04-01"), -0.50),
+    ]
+    assert equity_curve(dated) == [["2026-01", 1.0], ["2026-02", 1.1], ["2026-04", 0.55]]
+
+
+def test_equity_curve_is_empty_without_trades():
+    assert equity_curve([]) == []
