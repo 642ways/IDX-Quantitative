@@ -215,9 +215,62 @@ ol.steps li { margin-bottom: 2px; }
 .stat dd { margin: 0 0 8px; }
 .stat dd:last-child { margin-bottom: 0; }
 
-.regime { margin-bottom: 8px; padding: 8px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; font-size: 13px; }
-.regime .swatch.box { margin-right: 8px; vertical-align: 0; }
-.regime span { color: var(--muted); margin-left: 6px; }
+/* Today: the last few months of market type and stress, drawn instead of described */
+.market { margin-bottom: 12px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+.mrow { display: grid; grid-template-columns: 120px minmax(0, 1fr) 120px; gap: 12px; align-items: center; margin: 4px 0; }
+.mrow b { font-weight: 500; white-space: nowrap; }
+.mrow b .swatch.box { margin-right: 6px; vertical-align: 0; }
+.mlabel { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.weeks { display: flex; gap: 2px; height: 16px; }
+.weeks i { flex: 1; border-radius: 2px; }
+.market .note { margin-top: 6px; }
+.spark { display: block; width: 100%; height: 28px; overflow: visible; }
+.spark-area { fill: var(--text); opacity: .08; }
+.spark-line { fill: none; stroke: var(--text); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.spark-mark { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; }
+.spark-zero { stroke: var(--line); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.sparkcell { min-width: 150px; }
+.spark.gap { width: 140px; height: 30px; }
+
+/* Today table: stop, buy zone and target on one line */
+.plan { min-width: 170px; padding-top: 4px; }
+.plan-track { position: relative; height: 8px; background: var(--line); border-radius: 4px; }
+.plan-risk, .plan-reward, .plan-entry { position: absolute; top: 0; bottom: 0; }
+.plan-risk { background: var(--path-stop); border-radius: 4px 0 0 4px; }
+.plan-reward { background: var(--path-target); border-radius: 0 4px 4px 0; }
+.plan-entry { top: -3px; bottom: -3px; background: var(--text); border-radius: 2px; }
+.plan-ends { display: flex; justify-content: space-between; margin-top: 4px; color: var(--muted); font-size: 12px; }
+.chance { display: grid; grid-template-columns: minmax(60px, 1fr) 36px; gap: 8px; align-items: center; min-width: 120px; padding-top: 2px; }
+.chance span { text-align: right; }
+.chance .fill { background: var(--path-target); }
+
+/* Stock page: where the stock sits among its sector peers */
+.peers { margin-bottom: 4px; }
+.peerrow { display: grid; grid-template-columns: 120px minmax(0, 1fr) 64px; gap: 12px; align-items: center; margin: 6px 0; }
+.peerrow b { font-weight: 500; text-align: right; }
+.strip { position: relative; height: 36px; }
+.strip-line { position: absolute; top: 11px; left: 0; right: 0; height: 2px; background: var(--line); }
+.strip i { position: absolute; transform: translateX(-50%); }
+.strip .peer { top: 7px; width: 10px; height: 10px; border-radius: 50%; background: var(--muted); opacity: .4; }
+.strip .median-mark { top: 2px; width: 2px; height: 20px; background: var(--text); }
+.strip .own { top: 4px; width: 16px; height: 16px; border-radius: 50%; background: var(--accent); border: 2px solid var(--surface); z-index: 1; }
+.strip-end { position: absolute; bottom: 0; left: 0; color: var(--muted); font-size: 11px; line-height: 1; }
+.strip-end.right { left: auto; right: 0; }
+details.more { margin-top: 8px; }
+details.more summary { cursor: pointer; color: var(--accent); font-size: 13px; margin-bottom: 8px; }
+
+/* Results: backtest growth and the real-pick tally */
+.mc-chart .equity { fill: none; stroke-width: 2; }
+.mc-chart .e-short { stroke: var(--text); }
+.mc-chart .e-pair { stroke: var(--path-target); }
+.mc-chart .e-momentum { stroke: var(--muted); stroke-dasharray: 5 3; }
+.mc-chart .grid.base { stroke: var(--muted); stroke-dasharray: 2 3; }
+.swatch.e-short { background: var(--text); }
+.swatch.e-pair { background: var(--path-target); }
+.swatch.e-momentum { background: repeating-linear-gradient(90deg, var(--muted) 0 5px, transparent 5px 8px); }
+.recordbar { padding: 4px 16px 8px; }
+.recordbar .oddsbar { margin-bottom: 6px; }
+.o-open { background: var(--muted); opacity: .45; }
 .s-ihsg { background: var(--text); }
 .s-stress { height: 10px; background: var(--mt-panic); opacity: .3; }
 .mc-chart .stress { fill: var(--mt-panic); opacity: .2; }
@@ -295,6 +348,7 @@ footer { max-width: 1120px; margin: 0 auto; padding: 8px 24px 32px; color: var(-
   .grid, .stats, .detailgrid { grid-template-columns: minmax(0, 1fr); }
   .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .status { margin-left: 0; width: 100%; justify-content: space-between; }
+  .mrow, .peerrow { grid-template-columns: 92px minmax(0, 1fr) auto; gap: 8px; }
 }
 
 /* Phone: drop the rank column and pin the stock name, so a sideways scroll never loses the row */

@@ -111,6 +111,7 @@ def _pair_rows(found: list[pairs.Pair], ticker: str) -> list[dict]:
                 "gap": pair.z if is_cheap_side else -pair.z,
                 "half_life": pair.half_life,
                 "pvalue": pair.pvalue,
+                "gap_history": [gap if is_cheap_side else -gap for gap in pair.recent_z],
                 "status": signal if is_cheap_side or signal == "None" else "Other side",
             }
         )
@@ -154,7 +155,7 @@ def _market_features(fetcher, market, frames, cfg) -> pd.DataFrame | None:
 def _backtests(frames, sectors, previous, today, market, features, cfg):
     earlier = (previous or {}).get("backtest") or {}
     same_rules = earlier.get("calibration", {}).get("long", {}).get("stop") == cfg.long_stop
-    complete = earlier.get("regimes") and earlier.get("market_types")
+    complete = earlier.get("regimes") and earlier.get("market_types") and earlier.get("equity") is not None
     if same_rules and complete and previous.get("backtest_at"):
         age = (today - date.fromisoformat(previous["backtest_at"])).days
         if age < cfg.backtest_max_age_days:
@@ -181,6 +182,11 @@ def _backtests(frames, sectors, previous, today, market, features, cfg):
             "short": clusters.split_by_label(short, labels),
             "pair": clusters.split_by_label(pair, labels),
             "momentum": clusters.split_by_label(months, labels),
+        },
+        "equity": {
+            "short": backtest.equity_curve(short),
+            "pair": backtest.equity_curve(pair),
+            "momentum": backtest.equity_curve(months),
         },
         "calibration": {
             "short": montecarlo.calibrate_short(frames, cfg=cfg),

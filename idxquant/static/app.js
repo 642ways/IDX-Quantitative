@@ -14,6 +14,7 @@ let polling = false;
 let chartPlays = [];
 let regimeData = null;
 let marketTypeData = null;
+let equityData = null;
 let showAllRecord = false;
 let lastDataDate = null;
 const RECORD_ROWS = 6;
@@ -28,7 +29,6 @@ const esc = (value) =>
   String(value).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const missing = (value) => value === null || value === undefined;
 const price = (value) => (missing(value) ? DASH : Math.round(value).toLocaleString("en-US"));
-const ratio = (value) => (missing(value) ? DASH : value.toFixed(1));
 const times = (value) => (missing(value) ? DASH : `${value.toFixed(1)}x`);
 const rupiah = (value) =>
   missing(value) ? DASH : `Rp ${value.toLocaleString("en-US", { maximumFractionDigits: Math.abs(value) < 100 ? 1 : 0 })}`;
@@ -82,6 +82,30 @@ function pollRefresh() {
   }, 2000);
 }
 
+// Stop on the left, target on the right, the buy zone as a dark mark: lengths show downside and upside
+function planBar(p) {
+  const low = p.stop;
+  const span = p.target - low || 1;
+  const at = (value) => Math.max(0, Math.min(100, ((value - low) / span) * 100));
+  const label = `Stop ${price(p.stop)}, buy ${price(p.entry_low)} to ${price(p.entry_high)}, target ${price(p.target)}`;
+  return `<div class="plan" title="${label}" role="img" aria-label="${label}">
+      <div class="plan-track">
+        <span class="plan-risk" style="left:0;width:${at(p.entry_low).toFixed(1)}%"></span>
+        <span class="plan-reward" style="left:${at(p.entry_high).toFixed(1)}%;right:0"></span>
+        <span class="plan-entry" style="left:${at(p.entry_low).toFixed(1)}%;width:max(3px, ${(at(p.entry_high) - at(p.entry_low)).toFixed(1)}%)"></span>
+      </div>
+      <div class="plan-ends"><span>${signedPct(-p.downside)}</span><span>${signedPct(p.upside)}</span></div>
+    </div>`;
+}
+
+function chanceBar(mc) {
+  if (!mc) return DASH;
+  const share = pct(mc.target_prob, 0);
+  return `<div class="chance" title="Hits target ${share}, hits stop ${pct(mc.stop_prob, 0)}, neither ${pct(mc.neither_prob, 0)}">
+      <div class="track"><div class="fill" style="width:${(mc.target_prob * 100).toFixed(1)}%"></div></div><span>${share}</span>
+    </div>`;
+}
+
 function pickRows(picks) {
   return picks
     .map(
@@ -89,39 +113,53 @@ function pickRows(picks) {
         <td class="n">${p.rank}</td>
         <td><a class="tk" href="#/stock/${esc(p.ticker)}">${esc(p.ticker)}</a><span class="nm">${esc(p.name)}</span></td>
         <td>${tag(p.kind)}</td>
-        <td class="n">${price(p.entry_low)} – ${price(p.entry_high)}</td>
-        <td class="n">${price(p.target)}<span class="nm">${signedPct(p.upside)}</span></td>
-        <td class="n">${price(p.stop)}<span class="nm">${signedPct(-p.downside)}</span></td>
-        <td class="n">${ratio(p.pe)}</td>
-        <td class="n">${ratio(p.pbv)}</td>
+        <td>${planBar(p)}</td>
+        <td class="n">${chanceBar(p.monte_carlo)}</td>
         <td>${esc(p.reason)}</td>
       </tr>`,
     )
     .join("");
 }
 
-function regimeStrip(regime) {
-  if (!regime) return "";
-  const stressed = regime.label === "Stressed";
-  const swing = `Stressed markets have swung about ${pct(regime.stressed_vol, 0)} a year, against ${pct(regime.calm_vol, 0)} when calm.`;
-  return `<div class="regime">
-    <b><i class="swatch box ${stressed ? "mt-panic" : "mt-quiet"}"></i>Market: ${esc(regime.label)}</b>${help("Market regime")}
-    <span>${pct(regime.stress_prob, 0)} stress probability${help("Stress probability")}, ${esc(regime.label.toLowerCase())} since ${esc(regime.since)}. ${swing}</span>
-  </div>`;
+const change = (logValue) => (missing(logValue) ? null : Math.exp(logValue) - 1);
+const RECENT_WEEKS = 26;
+
+// A line through 0-to-1 values, stretched to its box. The dashed line marks the threshold.
+function sparkArea(values, threshold, label) {
+  const last = values.length - 1 || 1;
+  const points = values.map((value, i) => `${((i / last) * 100).toFixed(2)},${((1 - value) * 30).toFixed(2)}`);
+  const mark = ((1 - threshold) * 30).toFixed(2);
+  return `<svg class="spark" viewBox="0 0 100 30" preserveAspectRatio="none" role="img" aria-label="${esc(label)}">
+      <path class="spark-area" d="M0,30 L${points.join(" L")} L100,30 Z"></path>
+      <line class="spark-mark" x1="0" x2="100" y1="${mark}" y2="${mark}"></line>
+      <path class="spark-line" d="M${points.join(" L")}"></path>
+    </svg>`;
 }
 
-const change = (logValue) => (missing(logValue) ? null : Math.exp(logValue) - 1);
-
-function marketTypeStrip(type, dataDate) {
-  if (!type) return "";
-  const f = type.features;
-  const measured = type.history[type.history.length - 1][0];
-  const older = measured < dataDate ? ` Latest IHSG reading is from ${esc(measured)}.` : "";
-  return `<div class="regime">
-    <b><i class="swatch box mt-${esc(type.label.toLowerCase())}"></i>Market type: ${esc(type.label)}</b>${help("Market type")}
-    <span>${pct(type.confidence, 0)} confidence, since ${esc(type.since)}. IHSG ${signedPct(change(f.ret))} over 21 trading days,
-    ${pct(f.breadth, 0)} of stocks above their 50-day average.${older}</span>
-  </div>`;
+function marketPanel(regime, type) {
+  if (!regime && !type) return "";
+  const typeRow = type
+    ? `<div class="mrow">
+        <span class="mlabel">Market type${help("Market type")}</span>
+        <div class="weeks">${type.history
+          .slice(-RECENT_WEEKS)
+          .map(([day, label]) => `<i class="mt-${esc(label.toLowerCase())}" title="Week of ${esc(day)}: ${esc(label)}"></i>`)
+          .join("")}</div>
+        <b><i class="swatch box mt-${esc(type.label.toLowerCase())}"></i>${esc(type.label)}</b>
+      </div>`
+    : "";
+  const recent = regime ? regime.history.slice(-RECENT_WEEKS) : [];
+  const regimeRow = regime
+    ? `<div class="mrow" title="${recent.map(([day, , stress]) => `${day}: ${pct(stress, 0)}`).join("&#10;")}">
+        <span class="mlabel">Stress${help("Stress probability")}</span>
+        ${sparkArea(recent.map(([, , stress]) => stress), regime.threshold, `Stress probability over the last ${recent.length} weeks, now ${pct(regime.stress_prob, 0)}`)}
+        <b>${pct(regime.stress_prob, 0)}, ${esc(regime.label.toLowerCase())}</b>
+      </div>`
+    : "";
+  const since = type ? `${esc(type.label)} since ${esc(type.since)}. ` : "";
+  return `<div class="market">${typeRow}${regimeRow}
+      <p class="note">Last ${RECENT_WEEKS} weeks, oldest on the left. ${since}<a href="#/results">Full history</a></p>
+    </div>`;
 }
 
 // The one sentence the Today screen answers, read before the table
@@ -155,17 +193,15 @@ function renderToday(today) {
   const quiet = today.picks.length ? "No picks of this type today." : "No stock qualifies today. A quiet day is a valid result.";
   const body = picks.length
     ? `<div class="tablewrap"><table>
-        <thead><tr><th class="n">#</th><th>Stock</th><th>Play</th><th class="n">Entry</th><th class="n">Target</th>
-        <th class="n">Stop</th><th class="n">PE${help("PE (price to earnings)", "PE")}</th>
-        <th class="n">PBV${help("PBV (price to book value)", "PBV")}</th><th>Why today</th></tr></thead>
+        <thead><tr><th class="n">#</th><th>Stock</th><th>Play</th><th>Stop, buy zone, target</th>
+        <th class="n">Chance of target${help(ENDINGS, "chance of target")}</th><th>Why today</th></tr></thead>
         <tbody>${pickRows(picks)}</tbody></table></div>`
     : `<div class="empty">${today.data_date ? quiet : noData}</div>`;
 
   app.innerHTML = `<h1>Today's picks</h1>
     <p class="sub">Ranked by reward to risk after costs${help("Ranking", "ranking")}. Click a row for the full playbook.</p>
     ${finding(today)}
-    ${regimeStrip(today.regime)}
-    ${marketTypeStrip(today.market_type, today.data_date)}
+    ${marketPanel(today.regime, today.market_type)}
     <div class="filters">${buttons}</div>${body}`;
 
   app.querySelectorAll("[data-filter]").forEach((button) => {
@@ -435,6 +471,8 @@ function drawCharts() {
   if (holder && regimeData) drawRegimeChart(holder, regimeData);
   const strip = app.querySelector(".type-chart");
   if (strip && marketTypeData) drawTypeStrip(strip, marketTypeData);
+  const equity = app.querySelector(".equity-chart");
+  if (equity && equityData) drawEquityChart(equity, equityData);
 }
 
 // Grey label above its figure; the answer figure is drawn larger than its siblings
@@ -461,11 +499,31 @@ function performance(kinds, backtest) {
   return lines.join("");
 }
 
+const GAP_LIMIT = 4;
+
+// The gap over recent days, clipped to ±4σ, with the entry level dashed on both sides
+function gapSpark(history) {
+  if (!history || history.length < 2) return DASH;
+  const entry = Math.abs(settings ? settings.z_active : 2);
+  const y = (gap) => (((GAP_LIMIT - Math.max(-GAP_LIMIT, Math.min(GAP_LIMIT, gap))) / (2 * GAP_LIMIT)) * 30).toFixed(2);
+  const last = history.length - 1;
+  const points = history.map((gap, i) => `${((i / last) * 100).toFixed(2)},${y(gap)}`).join(" L");
+  const label = `Gap over the last ${history.length} trading days, from ${history[0].toFixed(1)}σ to ${history[last].toFixed(1)}σ`;
+  return `<svg class="spark gap" viewBox="0 0 100 30" preserveAspectRatio="none" role="img" aria-label="${label}">
+      <title>${label}</title>
+      <line class="spark-zero" x1="0" x2="100" y1="15" y2="15"></line>
+      <line class="spark-mark" x1="0" x2="100" y1="${y(entry)}" y2="${y(entry)}"></line>
+      <line class="spark-mark" x1="0" x2="100" y1="${y(-entry)}" y2="${y(-entry)}"></line>
+      <path class="spark-line" d="M${points}"></path>
+    </svg>`;
+}
+
 function pairRows(pairs) {
   return pairs
     .map(
       (p) => `<tr>
         <td><a class="tk" href="#/stock/${esc(p.with)}">${esc(p.with)}</a></td>
+        <td class="sparkcell">${gapSpark(p.gap_history)}</td>
         <td class="n">${p.gap.toFixed(1)}σ ${p.gap < 0 ? "cheap" : "rich"}</td>
         <td class="n">~${Math.round(p.half_life)} days</td>
         <td>${esc(p.status)}</td>
@@ -483,7 +541,7 @@ function renderStock(stock, today) {
     ? `Financials from ${esc(v.as_of)}${v.stale ? ", which is out of date" : ""}.`
     : "No financial data available.";
   const pairs = stock.pairs.length
-    ? `<table><thead><tr><th>Paired with</th><th class="n">Gap now${help("Gap", "gap")}</th>
+    ? `<table><thead><tr><th>Paired with</th><th>Gap, last ${settings ? settings.z_window : 60} days</th><th class="n">Gap now${help("Gap", "gap")}</th>
         <th class="n">Half-life${help("Half-life")}</th><th>Signal${help("Signal")}</th></tr></thead>
         <tbody>${pairRows(stock.pairs)}</tbody></table>`
     : `<p class="note" style="padding:0 16px 16px">No statistically sound pair today.</p>`;
@@ -497,11 +555,12 @@ function renderStock(stock, today) {
       <section class="panel full"><h2>The playbook${topicHelp("picks", "how picks are chosen")}</h2>${plays}
         ${performance(stock.plays.map((p) => p.kind), today.backtest)}</section>
       <section class="panel full factors"><h2>Factor scores${topicHelp("factors", "factor scores")}</h2>
+        ${bar("Combined score", stock.scores.composite)}
         ${bar("Value", stock.scores.value)}${bar("Quality", stock.scores.quality)}
         ${bar("Momentum", stock.scores.momentum)}${bar("Size", stock.scores.size)}
         <p class="note">0 to 100 against the stock list. Size is shown for information and isn't in the combined score.</p>
       </section>
-      ${valuationDetails(stock, dated)}
+      ${valuationDetails(stock, dated, today)}
       ${yearlyHistory(stock)}
       ${stock.plays.map(chartSection).join("")}
       <section class="panel flat full"><h2>Statistical arbitrage with other stocks${topicHelp("arbitrage", "statistical arbitrage")}</h2>${pairs}</section>
@@ -519,7 +578,55 @@ function detailTable(title, rows, withSector = false) {
   return `<div class="detail"><table><thead><tr><th>${title}</th>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
 }
 
-function valuationDetails(stock, dated) {
+const PEER_MEASURES = [
+  ["PE", "PE (price to earnings)", "pe", times, true, "Cheaper", "Pricier"],
+  ["PBV", "PBV (price to book value)", "pbv", times, true, "Cheaper", "Pricier"],
+  ["Dividend yield", "Dividend yield", "dividend_yield", pct, false, "Lower", "Higher"],
+  ["ROE", "ROE (return on equity)", "roe", pct, false, "Lower", "Higher"],
+];
+
+const quantile = (sorted, share) => sorted[Math.min(sorted.length - 1, Math.max(0, Math.round(share * (sorted.length - 1))))];
+
+// Each sector peer is a grey dot, the median a dark line, and this stock the blue dot
+function peerStrip(stock, peers, [label, helpKey, field, format, ratioScale, lowWord, highWord]) {
+  const usable = (value) => !missing(value) && Number.isFinite(value) && (!ratioScale || value > 0);
+  const own = stock.valuation[field];
+  const others = peers.filter((peer) => usable(peer.valuation[field]));
+  if (!usable(own) || others.length < 2) return "";
+  const values = [own, ...others.map((peer) => peer.valuation[field])].sort((a, b) => a - b);
+  const scale = ratioScale ? Math.log : (value) => value;
+  // The middle 90% sets the scale, so one extreme peer doesn't squash the rest; outliers sit on the edges
+  const low = scale(values.length >= 8 ? quantile(values, 0.05) : values[0]);
+  const high = scale(values.length >= 8 ? quantile(values, 0.95) : values[values.length - 1]);
+  const at = (value) => (high === low ? 50 : Math.max(0, Math.min(100, ((scale(value) - low) / (high - low)) * 100))).toFixed(1);
+  const median = stock.sector_medians[field];
+  const dots = others
+    .map((peer) => `<i class="peer" style="left:${at(peer.valuation[field])}%" title="${esc(peer.ticker)} ${format(peer.valuation[field])}"></i>`)
+    .join("");
+  const medianMark = usable(median) ? `<i class="median-mark" style="left:${at(median)}%" title="Sector median ${format(median)}"></i>` : "";
+  return `<div class="peerrow">
+      <span class="mlabel">${label}${help(helpKey, label)}</span>
+      <div class="strip" role="img" aria-label="${label} ${format(own)} against ${others.length} sector peers, median ${format(median)}">
+        <div class="strip-line"></div>${dots}${medianMark}
+        <i class="own" style="left:${at(own)}%" title="${esc(stock.ticker)} ${format(own)}"></i>
+        <span class="strip-end">${lowWord}</span><span class="strip-end right">${highWord}</span>
+      </div>
+      <b>${format(own)}</b>
+    </div>`;
+}
+
+function peerStrips(stock, today) {
+  const peers = Object.values((today && today.stocks) || {}).filter(
+    (peer) => peer.sector === stock.sector && peer.ticker !== stock.ticker && peer.valuation,
+  );
+  const rows = PEER_MEASURES.map((measure) => peerStrip(stock, peers, measure)).join("");
+  if (!rows) return "";
+  return `<div class="peers">${rows}
+      <p class="note">Against ${peers.length} other ${esc(stock.sector)} stocks. Grey dots are peers, the upright line is the sector median and blue is ${esc(stock.ticker)}. Hover a dot for its figure.</p>
+    </div>`;
+}
+
+function valuationDetails(stock, dated, today) {
   const v = stock.valuation;
   const m = stock.sector_medians;
   const row = (label, key, format, field) => [label, key, format(v[field]), format(m[field])];
@@ -559,12 +666,16 @@ function valuationDetails(stock, dated) {
     ["Market cap", "Market cap and debt to equity", money(v.market_cap)],
   ];
   return `<section class="panel full"><h2>Valuation${topicHelp("valuation", "valuation")}</h2>
+    ${peerStrips(stock, today)}
+    <details class="more"><summary>All valuation figures</summary>
     <div class="detailgrid">
       ${detailTable("Price", prices, true)}${detailTable("Profitability", profit, true)}
       ${detailTable("Per share and size", perShare)}${detailTable("Financial health", health)}
       ${detailTable("Growth", growth)}
     </div>
-    <p class="note">${dated} The sector column is the median of the stock's peers${help("Sector median")}. A dash means the figure is missing or doesn't apply to this company.</p>
+    <p class="note">The sector column is the median of the stock's peers${help("Sector median")}. A dash means the figure is missing or doesn't apply to this company.</p>
+    </details>
+    <p class="note">${dated}</p>
   </section>`;
 }
 
@@ -582,9 +693,16 @@ function yearlyHistory(stock) {
   </section>`;
 }
 
+function winBar(share) {
+  if (missing(share)) return DASH;
+  return `<div class="chance" title="${pct(share, 0)} of trades made money after costs">
+      <div class="track"><div class="fill" style="width:${(share * 100).toFixed(1)}%"></div></div><span>${pct(share, 0)}</span>
+    </div>`;
+}
+
 function resultRow(label, result) {
   if (!result) return `<tr><td>${label}</td><td class="n">${DASH}</td><td class="n">${DASH}</td><td class="n">${DASH}</td><td class="n">${DASH}</td></tr>`;
-  return `<tr><td>${label}</td><td class="n">${result.trades}</td><td class="n">${pct(result.win_rate, 0)}</td>
+  return `<tr><td>${label}</td><td class="n">${result.trades}</td><td class="n">${winBar(result.win_rate)}</td>
     <td class="n">${signedPct(result.avg_return)}</td><td class="n">${signedPct(result.max_drawdown)}</td></tr>`;
 }
 
@@ -619,6 +737,108 @@ function regimeRows(label, split) {
         <td class="n">${pct(r.win_rate, 0)}</td><td class="n">${signedPct(r.avg_return)}</td><td class="n">${signedPct(r.max_drawdown)}</td></tr>`;
     })
     .join("");
+}
+
+const EQUITY_LINES = [
+  ["short", "Short term", "e-short"],
+  ["pair", "Pair trade", "e-pair"],
+  ["momentum", "Momentum", "e-momentum"],
+];
+
+function equityPanel(equity) {
+  if (!equity || !EQUITY_LINES.some(([key]) => (equity[key] || []).length > 1)) return "";
+  const key = (name, kind) => `<span class="key"><i class="swatch ${kind}"></i>${name}</span>`;
+  return `<section class="panel full"><h2>Growth of Rp 1 in the backtest${help("Backtest")}</h2>
+      <p class="note chartnote">Each month's average trade is compounded, so overlapping trades count once. Log scale: equal steps are equal percentage moves.</p>
+      <div class="legend">${EQUITY_LINES.map(([, name, kind]) => key(name, kind)).join("")}</div>
+      <div class="mc-chart equity-chart"></div>
+    </section>`;
+}
+
+function drawEquityChart(holder, equity) {
+  const series = EQUITY_LINES.map(([field, name, kind]) => [name, kind, equity[field] || []]).filter(([, , points]) => points.length > 1);
+  const months = [...new Set(series.flatMap(([, , points]) => points.map(([month]) => month)))].sort();
+  const width = holder.clientWidth;
+  const height = 260;
+  const margin = { top: 12, right: 16, bottom: 28, left: 52 };
+  const plotRight = width - margin.right;
+  const plotBottom = height - margin.bottom;
+  const values = [1, ...series.flatMap(([, , points]) => points.map(([, value]) => value))].filter((value) => value > 0);
+  const low = Math.log(Math.min(...values) * 0.95);
+  const high = Math.log(Math.max(...values) * 1.05);
+  const index = new Map(months.map((month, i) => [month, i]));
+  const x = (i) => margin.left + (i / Math.max(months.length - 1, 1)) * (plotRight - margin.left);
+  const y = (value) => margin.top + ((high - Math.log(Math.max(value, 1e-6))) / (high - low)) * (plotBottom - margin.top);
+  // Doubling steps, so the gridlines are evenly spaced on the log scale
+  const ticks = [0.125, 0.25, 0.5, 1, 2, 4, 8, 16, 32, 64].filter((tick) => Math.log(tick) >= low && Math.log(tick) <= high);
+  const grid = ticks
+    .map((tick) => `<line class="grid${tick === 1 ? " base" : ""}" x1="${margin.left}" x2="${plotRight}" y1="${y(tick)}" y2="${y(tick)}"></line>
+      <text class="axis" x="${margin.left - 8}" y="${y(tick) + 4}" text-anchor="end">${tick}x</text>`)
+    .join("");
+  const yearStep = width < 520 ? 2 : 1;
+  const years = months
+    .flatMap((month, i) => (i && month.slice(0, 4) !== months[i - 1].slice(0, 4) ? [i] : []))
+    .filter((_, i) => i % yearStep === 0)
+    .map((i) => `<text class="axis" x="${x(i)}" y="${plotBottom + 18}" text-anchor="middle">${months[i].slice(0, 4)}</text>`)
+    .join("");
+  const lines = series
+    .map(([, kind, points]) => `<path class="equity ${kind}" d="${points
+      .map(([month, value], i) => `${i ? "L" : "M"}${x(index.get(month)).toFixed(1)} ${y(value).toFixed(1)}`)
+      .join("")}"></path>`)
+    .join("");
+  holder.innerHTML = `<svg width="${width}" height="${height}" role="img" aria-label="Growth of Rp 1 for each backtested signal over time">
+      ${grid}${lines}${years}
+      <line class="cross" y1="${margin.top}" y2="${plotBottom}" visibility="hidden"></line>
+      <rect class="hit" x="${margin.left}" y="${margin.top}" width="${Math.max(plotRight - margin.left, 0)}" height="${plotBottom - margin.top}"></rect>
+    </svg><div class="tip" hidden></div>`;
+
+  const lookup = series.map(([name, , points]) => [name, new Map(points)]);
+  const cross = holder.querySelector(".cross");
+  const tip = holder.querySelector(".tip");
+  const hit = holder.querySelector(".hit");
+  hit.addEventListener("pointermove", (event) => {
+    const box = holder.getBoundingClientRect();
+    const share = (event.clientX - box.left - margin.left) / (plotRight - margin.left);
+    const nearest = Math.max(0, Math.min(months.length - 1, Math.round(share * (months.length - 1))));
+    const month = months[nearest];
+    const left = x(nearest);
+    cross.setAttribute("x1", left);
+    cross.setAttribute("x2", left);
+    cross.setAttribute("visibility", "visible");
+    tip.hidden = false;
+    // Each line shows its latest value up to this month, since signals don't trade every month
+    const rows = lookup.map(([name, points]) => {
+      const seen = [...points.keys()].filter((m) => m <= month);
+      return seen.length ? `${name} ${points.get(seen[seen.length - 1]).toFixed(2)}x` : `${name} ${DASH}`;
+    });
+    tip.innerHTML = `<b>${month}</b><br>${rows.join("<br>")}`;
+    tip.style.left = `${Math.min(left + 10, Math.max(width - 160, 0))}px`;
+  });
+  hit.addEventListener("pointerleave", () => {
+    tip.hidden = true;
+    cross.setAttribute("visibility", "hidden");
+  });
+}
+
+const OUTCOME_ORDER = [
+  ["Target hit", "o-target"],
+  ["Stop hit", "o-stop"],
+  ["Time limit", "o-neither"],
+  ["Open", "o-open"],
+];
+
+function recordSummary(record) {
+  if (!record.length) return "";
+  const counts = OUTCOME_ORDER.map(([outcome, kind]) => [outcome, kind, record.filter((r) => r.outcome === outcome).length]).filter(
+    ([, , count]) => count,
+  );
+  const keys = counts.map(([outcome, kind, count]) => `<span class="key"><i class="swatch box ${kind}"></i>${outcome} ${count}</span>`).join("");
+  return `<div class="recordbar">
+      <div class="oddsbar" role="img" aria-label="${counts.map(([outcome, , count]) => `${outcome} ${count}`).join(", ")}">
+        ${counts.map(([, kind, count]) => `<span class="${kind}" style="width:${((count / record.length) * 100).toFixed(1)}%"></span>`).join("")}
+      </div>
+      <div class="legend">${keys}</div>
+    </div>`;
 }
 
 function regimePanels(regime, splits) {
@@ -698,8 +918,11 @@ function renderResults(results) {
           )
           .join("")}</tbody></table>${viewAll}`
     : `<p class="note" style="padding:0 16px 16px">Picks are saved each day, and their real outcomes will appear here.</p>`;
+  const reasons = [...new Set(results.skipped.map((s) => s.reason))];
   const skipped = results.skipped.length
-    ? `<p class="note">Left out of the latest run: ${results.skipped.map((s) => `${esc(s.ticker)} (${esc(s.reason)})`).join(", ")}.</p>`
+    ? `<p class="note">Left out of the latest run, ${results.skipped.length} stocks. ${reasons
+        .map((reason) => `${esc(reason)}: ${results.skipped.filter((s) => s.reason === reason).map((s) => esc(s.ticker)).join(", ")}.`)
+        .join(" ")}</p>`
     : "";
 
   app.innerHTML = `<h1>Results</h1>
@@ -713,10 +936,11 @@ function renderResults(results) {
         <p class="note" style="padding:0 16px 16px">${tested}The stock list is today's index members, which flatters past results because
         companies that collapsed aren't in it. Drawdown compounds each month's average trade. Past results don't predict future ones.</p>
       </section>
+      ${equityPanel(backtest.equity)}
       ${regimePanels(results.regime, backtest.regimes)}
       ${marketTypePanels(results.market_type, backtest.market_types)}
       ${calibrationPanel(backtest.calibration)}
-      <section class="panel flat full"><h2>Track record of real picks</h2>${record}</section>
+      <section class="panel flat full"><h2>Track record of real picks</h2>${recordSummary(results.track_record)}${record}</section>
     </div>${skipped}`;
   app.querySelector("[data-view-all]")?.addEventListener("click", () => {
     showAllRecord = true;
@@ -724,6 +948,7 @@ function renderResults(results) {
   });
   regimeData = results.regime;
   marketTypeData = results.market_type;
+  equityData = backtest.equity;
   drawCharts();
 }
 

@@ -38,6 +38,16 @@ def summarise_dated(trades: list[tuple[pd.Timestamp, float]]) -> dict:
     return summarise(frame["result"].tolist()) | {"max_drawdown": summarise(months.tolist())["max_drawdown"]}
 
 
+def equity_curve(trades: list[tuple[pd.Timestamp, float]]) -> list[list]:
+    """Growth of 1 when each month's average trade is compounded, as [month, value at the end of that month]."""
+    if not trades:
+        return []
+    frame = pd.DataFrame(trades, columns=["date", "result"]).sort_values("date")
+    months = frame.groupby(frame["date"].dt.to_period("M"))["result"].mean()
+    equity = (1 + months).cumprod()
+    return [[str(month), round(float(value), 4)] for month, value in equity.items()]
+
+
 def walk(ohlc: pd.DataFrame, signal_day: int, stop: float, target: float, days: int) -> tuple | None:
     """Follows a trade from the next open. Returns entry, exit and how it ended ("stop", "target" or "time")."""
     first = signal_day + 1
