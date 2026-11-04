@@ -14,6 +14,10 @@ let polling = false;
 let chartPlays = [];
 let regimeData = null;
 let marketTypeData = null;
+let showAllRecord = false;
+let lastDataDate = null;
+const RECORD_ROWS = 6;
+const LOADING_DELAY = 150; // Fast loads skip the placeholder, so the page doesn't flash
 let settings = null;
 let helpTopics = [];
 let helpTimer;
@@ -86,8 +90,8 @@ function pickRows(picks) {
         <td><a class="tk" href="#/stock/${esc(p.ticker)}">${esc(p.ticker)}</a><span class="nm">${esc(p.name)}</span></td>
         <td>${tag(p.kind)}</td>
         <td class="n">${price(p.entry_low)} – ${price(p.entry_high)}</td>
-        <td class="n up">${price(p.target)}</td>
-        <td class="n down">${price(p.stop)}</td>
+        <td class="n">${price(p.target)}<span class="nm">${signedPct(p.upside)}</span></td>
+        <td class="n">${price(p.stop)}<span class="nm">${signedPct(-p.downside)}</span></td>
         <td class="n">${ratio(p.pe)}</td>
         <td class="n">${ratio(p.pbv)}</td>
         <td>${esc(p.reason)}</td>
@@ -100,8 +104,8 @@ function regimeStrip(regime) {
   if (!regime) return "";
   const stressed = regime.label === "Stressed";
   const swing = `Stressed markets have swung about ${pct(regime.stressed_vol, 0)} a year, against ${pct(regime.calm_vol, 0)} when calm.`;
-  return `<div class="regime ${stressed ? "is-stressed" : ""}">
-    <b>Market: ${esc(regime.label)}</b>${help("Market regime")}
+  return `<div class="regime">
+    <b><i class="swatch box ${stressed ? "mt-panic" : "mt-quiet"}"></i>Market: ${esc(regime.label)}</b>${help("Market regime")}
     <span>${pct(regime.stress_prob, 0)} stress probability${help("Stress probability")}, ${esc(regime.label.toLowerCase())} since ${esc(regime.since)}. ${swing}</span>
   </div>`;
 }
@@ -113,11 +117,31 @@ function marketTypeStrip(type, dataDate) {
   const f = type.features;
   const measured = type.history[type.history.length - 1][0];
   const older = measured < dataDate ? ` Latest IHSG reading is from ${esc(measured)}.` : "";
-  return `<div class="regime type-${esc(type.label.toLowerCase())}">
-    <b>Market type: ${esc(type.label)}</b>${help("Market type")}
+  return `<div class="regime">
+    <b><i class="swatch box mt-${esc(type.label.toLowerCase())}"></i>Market type: ${esc(type.label)}</b>${help("Market type")}
     <span>${pct(type.confidence, 0)} confidence, since ${esc(type.since)}. IHSG ${signedPct(change(f.ret))} over 21 trading days,
     ${pct(f.breadth, 0)} of stocks above their 50-day average.${older}</span>
   </div>`;
+}
+
+// The one sentence the Today screen answers, read before the table
+function finding(today) {
+  if (!today.data_date || !today.picks.length) return "";
+  const counts = Object.keys(KINDS)
+    .map((kind) => [kind, today.picks.filter((p) => p.kind === kind).length])
+    .filter(([, count]) => count);
+  const stocks = `${today.picks.length} ${today.picks.length === 1 ? "pick" : "picks"}`;
+  const split =
+    counts.length === 1
+      ? `${stocks}, all ${KINDS[counts[0][0]].toLowerCase()}.`
+      : `${stocks}: ${counts.map(([kind, count]) => `${count} ${KINDS[kind].toLowerCase()}`).join(", ")}.`;
+  const missingKinds = Object.keys(KINDS).filter((kind) => !counts.some(([k]) => k === kind));
+  const market = today.market_type ? today.market_type.label : today.regime && today.regime.label;
+  const quiet =
+    missingKinds.length && market
+      ? ` No ${missingKinds.map((kind) => KINDS[kind].toLowerCase()).join(" or ")} setups while the market is in ${esc(market)}.`
+      : "";
+  return `<p class="finding">${split}${quiet}</p>`;
 }
 
 function renderToday(today) {
@@ -139,6 +163,7 @@ function renderToday(today) {
 
   app.innerHTML = `<h1>Today's picks</h1>
     <p class="sub">Ranked by reward to risk after costs${help("Ranking", "ranking")}. Click a row for the full playbook.</p>
+    ${finding(today)}
     ${regimeStrip(today.regime)}
     ${marketTypeStrip(today.market_type, today.data_date)}
     <div class="filters">${buttons}</div>${body}`;
@@ -183,8 +208,8 @@ function oddsBlock(play, backtest) {
       <span class="o-stop" style="width:${width(mc.stop_prob)}%"></span>
     </div>
     <div class="metrics">
-      ${metric("Hits target", `<span class="up">${pct(mc.target_prob, 0)}</span>`, ENDINGS)}
-      ${metric("Hits stop", `<span class="down">${pct(mc.stop_prob, 0)}</span>`, ENDINGS)}
+      ${metric("Hits target", pct(mc.target_prob, 0), ENDINGS, true)}
+      ${metric("Hits stop", pct(mc.stop_prob, 0), ENDINGS)}
       ${metric("Neither in time", pct(mc.neither_prob, 0), ENDINGS)}
       ${metric("Average outcome", signedPct(mc.expected_return), "Average outcome and range")}
     </div>
@@ -204,8 +229,8 @@ function playBlock(play, backtest) {
     ${tag(play.kind)}${help(PLAY_HELP[play.kind])} <span class="note">${esc(play.reason)}</span>
     <ol class="steps">
       <li>Buy between ${price(play.entry_low)} and ${price(play.entry_high)}</li>
-      <li>Take profit at ${price(play.target)} (<span class="up">${signedPct(play.upside)}</span> after costs)</li>
-      <li>Exit below ${price(play.stop)} (<span class="down">${signedPct(-play.downside)}</span> after costs)</li>
+      <li>Take profit at ${price(play.target)} (${signedPct(play.upside)} after costs)</li>
+      <li>Exit below ${price(play.stop)} (${signedPct(-play.downside)} after costs)</li>
       <li>${timeLimit(play)}</li>
     </ol>${pairNote}${oddsBlock(play, backtest)}</div>`;
 }
@@ -219,7 +244,7 @@ function chartSection(play, index) {
     <p class="note chartnote">${mc.chart.paths.length} of ${mc.paths.toLocaleString("en-US")} paths shown. Each line stops when the trade ends.
       The shaded band covers the middle 80% of all paths. For illustration only.</p>
     <div class="legend">
-      ${entry("Reached target", "s-target")}${entry("Reached stop", "s-stop")}${entry("Ran out of time", "s-time")}
+      ${entry("Reached target", "s-target")}${entry("Reached stop or ran out of time", "s-time")}
       ${entry("Middle 80%", "s-band")}${entry("Median", "s-median")}
     </div>
     <div class="mc-chart" data-index="${index}"></div>
@@ -412,8 +437,9 @@ function drawCharts() {
   if (strip && marketTypeData) drawTypeStrip(strip, marketTypeData);
 }
 
-function metric(label, value, helpKey) {
-  return `<div class="metric"><b>${value}</b><span>${label}${helpKey ? help(helpKey, label) : ""}</span></div>`;
+// Grey label above its figure; the answer figure is drawn larger than its siblings
+function metric(label, value, helpKey, answer = false) {
+  return `<div class="metric${answer ? " answer" : ""}"><span>${label}${helpKey ? help(helpKey, label) : ""}</span><b>${value}</b></div>`;
 }
 
 function bar(label, value) {
@@ -468,9 +494,9 @@ function renderStock(stock, today) {
       <div class="price">Rp ${price(stock.close)}</div>
     </div>
     <div class="grid">
-      <section class="panel"><h2>The playbook${topicHelp("picks", "how picks are chosen")}</h2>${plays}
+      <section class="panel full"><h2>The playbook${topicHelp("picks", "how picks are chosen")}</h2>${plays}
         ${performance(stock.plays.map((p) => p.kind), today.backtest)}</section>
-      <section class="panel"><h2>Factor scores${topicHelp("factors", "factor scores")}</h2>
+      <section class="panel full factors"><h2>Factor scores${topicHelp("factors", "factor scores")}</h2>
         ${bar("Value", stock.scores.value)}${bar("Quality", stock.scores.quality)}
         ${bar("Momentum", stock.scores.momentum)}${bar("Size", stock.scores.size)}
         <p class="note">0 to 100 against the stock list. Size is shown for information and isn't in the combined score.</p>
@@ -656,16 +682,21 @@ function marketTypePanels(type, splits) {
 function renderResults(results) {
   const backtest = results.backtest || {};
   const tested = results.backtest_at ? `Tested ${esc(results.backtest_at)}, on up to 10 years of prices. ` : "";
-  const record = results.track_record.length
+  const newest = results.track_record.slice().reverse();
+  const shown = showAllRecord ? newest : newest.slice(0, RECORD_ROWS);
+  const viewAll =
+    newest.length > RECORD_ROWS && !showAllRecord
+      ? `<p class="note" style="padding:0 16px 16px">Showing ${RECORD_ROWS} of ${newest.length.toLocaleString("en-US")}.
+          <button type="button" class="textbutton" data-view-all>View all</button></p>`
+      : "";
+  const record = newest.length
     ? `<table><thead><tr><th>Picked</th><th>Stock</th><th>Play</th><th class="n">Entry</th><th>Outcome</th><th class="n">Return</th></tr></thead>
-        <tbody>${results.track_record
-          .slice()
-          .reverse()
+        <tbody>${shown
           .map(
             (r) => `<tr><td>${esc(r.picked_on)}</td><td class="tk">${esc(r.ticker)}</td><td>${tag(r.kind)}</td>
               <td class="n">${price(r.entry)}</td><td>${esc(r.outcome)}</td><td class="n">${signedPct(r.return)}</td></tr>`,
           )
-          .join("")}</tbody></table>`
+          .join("")}</tbody></table>${viewAll}`
     : `<p class="note" style="padding:0 16px 16px">Picks are saved each day, and their real outcomes will appear here.</p>`;
   const skipped = results.skipped.length
     ? `<p class="note">Left out of the latest run: ${results.skipped.map((s) => `${esc(s.ticker)} (${esc(s.reason)})`).join(", ")}.</p>`
@@ -687,6 +718,10 @@ function renderResults(results) {
       ${calibrationPanel(backtest.calibration)}
       <section class="panel flat full"><h2>Track record of real picks</h2>${record}</section>
     </div>${skipped}`;
+  app.querySelector("[data-view-all]")?.addEventListener("click", () => {
+    showAllRecord = true;
+    renderResults(results);
+  });
   regimeData = results.regime;
   marketTypeData = results.market_type;
   drawCharts();
@@ -762,15 +797,32 @@ document.addEventListener("keydown", (event) => {
 });
 window.addEventListener("scroll", hideHelp, { passive: true });
 
+// The page's final shape in flat grey, shown while data loads. No shimmer.
+function placeholder() {
+  const rows = Array.from({ length: 6 }, () => `<div class="sk sk-row"></div>`).join("");
+  return `<div class="sk sk-title"></div><div class="sk sk-line"></div><div class="panel sk-panel">${rows}</div>`;
+}
+
+function loadError() {
+  const when = lastDataDate ? ` The last data loaded was from ${esc(lastDataDate)}.` : "";
+  return `<div class="empty">Couldn't load this page.${when}
+    <button type="button" class="textbutton" data-retry>Retry</button></div>`;
+}
+
 async function route() {
   const hash = location.hash || "#/";
   hideHelp();
+  if (!hash.startsWith("#/results")) showAllRecord = false;
+  const waiting = setTimeout(() => {
+    app.innerHTML = placeholder();
+  }, LOADING_DELAY);
   try {
     if (!helpTopics.length) {
       settings = await getJson("/api/methods");
       helpTopics = methodTopics(settings);
     }
     const today = await getJson("/api/today");
+    lastDataDate = today.data_date;
     showStatus(today);
     const match = hash.match(/^#\/stock\/(.+)$/);
     const how = hash.match(/^#\/how(?:\/(\w+))?$/);
@@ -788,8 +840,11 @@ async function route() {
       renderToday(today);
     }
   } catch (error) {
-    app.innerHTML = `<div class="empty">Couldn't load this page. <a href="#/">Back to today's picks</a></div>`;
+    clearTimeout(waiting);
+    app.innerHTML = loadError();
+    app.querySelector("[data-retry]").addEventListener("click", route);
   }
+  clearTimeout(waiting);
   window.scrollTo(0, 0);
 }
 
