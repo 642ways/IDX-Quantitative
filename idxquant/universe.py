@@ -1,4 +1,4 @@
-"""The stock list. Edit universe.csv by hand when the IDX80 rebalances."""
+"""The stock list: the IDX80 plus other liquid stocks. Edit universe.csv by hand when the IDX80 rebalances."""
 from pathlib import Path
 
 import pandas as pd
