@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 import shutil
 
-from idxquant.api import STATIC, methods_payload, results_payload, today_payload
+from idxquant.api import STATIC, methods_payload, results_payload, stock_payload, today_payload
 
 SERVER_MODE = '<meta name="idx-mode" content="server">'
 STATIC_MODE = '<meta name="idx-mode" content="static">'
@@ -38,6 +38,6 @@ def export_site(store, out: Path) -> None:
     _write_json(api / "results.json", results_payload(store))
     _write_json(api / "methods.json", methods_payload())
     (api / "stock").mkdir(parents=True, exist_ok=True)
-    for ticker, stock in (snapshot or {}).get("stocks", {}).items():
-        _write_json(api / "stock" / f"{ticker}.json", stock)
+    for ticker in (snapshot or {}).get("stocks", {}):
+        _write_json(api / "stock" / f"{ticker}.json", stock_payload(store, snapshot, ticker))
     _write_json(out / "vercel.json", VERCEL_CONFIG)

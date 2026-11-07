@@ -496,6 +496,22 @@ ul.headlines a:hover { color: var(--accent); }
 .dot.flat { background: var(--muted); opacity: .5; }
 .o-neither { background: var(--line); }
 
+/* Stock page: price chart */
+.charthead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.charthead h2 { margin: 0; }
+.charthead .ranges { margin: 0; }
+.charthead .ranges button { padding: 2px 10px; font-size: 12px; }
+.mc-chart .price-line { fill: none; stroke: var(--text); stroke-width: 1.8; }
+.mc-chart .ma50 { fill: none; stroke: var(--accent); stroke-width: 1.5; }
+.mc-chart .ma200 { fill: none; stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 5 3; }
+.mc-chart .zone { fill: var(--accent); opacity: .14; }
+.mc-chart .hover-dot { fill: var(--text); pointer-events: none; }
+.swatch.s-price { height: 2px; background: var(--text); }
+.swatch.s-ma50 { height: 2px; background: var(--accent); }
+.swatch.s-ma200 { height: 2px; background: repeating-linear-gradient(90deg, var(--muted) 0 5px, transparent 5px 8px); }
+.swatch.s-zone { background: var(--accent); opacity: .3; }
+.swatch.s-stopline { height: 2px; background: repeating-linear-gradient(90deg, var(--text) 0 4px, transparent 4px 7px); }
+
 footer { max-width: 1120px; margin: 0 auto; padding: 8px 24px 32px; color: var(--muted); font-size: 12px; }
 
 @media (max-width: 960px) {
