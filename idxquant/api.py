@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from idxquant import pipeline
 from idxquant.config import CONFIG
 from idxquant.factors import MIN_SECTOR_SIZE
+from idxquant.history import price_history
 from idxquant.pipeline import WIB
 from idxquant.plays import SHORT_BREAKOUT_DAYS, SHORT_TREND_DAYS
 
@@ -74,6 +75,14 @@ def today_payload(snapshot: dict | None, warnings: list[str] | None = None, refr
         "warnings": warnings or snapshot["warnings"],
         "refreshing": refreshing,
     }
+
+
+def stock_payload(store, snapshot: dict | None, ticker: str) -> dict | None:
+    """The stock's page with its price history, read from the saved prices up to the results date."""
+    page = (snapshot or EMPTY)["stocks"].get(ticker)
+    if page is None:
+        return None
+    return page | {"history": price_history(store.load_prices(ticker), until=snapshot.get("data_date"))}
 
 
 def results_payload(store) -> dict:
@@ -142,7 +151,7 @@ def create_app(
 
     @app.get("/api/stock/{ticker}")
     def stock(ticker: str):
-        page = (store.latest_snapshot() or EMPTY)["stocks"].get(ticker)
+        page = stock_payload(store, store.latest_snapshot(), ticker)
         if page is None:
             raise HTTPException(status_code=404, detail="Stock not in today's list")
         return page

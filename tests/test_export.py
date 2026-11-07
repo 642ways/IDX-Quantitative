@@ -1,8 +1,10 @@
 import json
 
+import pandas as pd
+
 from idxquant.api import methods_payload, results_payload, today_payload
 from idxquant.export import export_site
-from idxquant.store import Store
+from idxquant.store import PRICE_COLUMNS, Store
 
 
 def snapshot():
@@ -93,3 +95,15 @@ def test_exported_json_is_strict(tmp_path):
     _, out = exported(tmp_path)
     for path in (out / "api").rglob("*.json"):
         json.loads(path.read_text(encoding="utf-8"), parse_constant=lambda name: (_ for _ in ()).throw(ValueError(name)))
+
+
+def test_stock_pages_carry_price_history_but_today_does_not(tmp_path):
+    store = Store(tmp_path / "db.sqlite")
+    days = pd.bdate_range(end="2026-11-03", periods=300)
+    store.save_prices("BBCA", pd.DataFrame({column: 1000.0 for column in PRICE_COLUMNS}, index=days))
+    store.save_snapshot("2026-11-03", snapshot())
+    out = tmp_path / "site"
+    export_site(store, out)
+    assert read(out / "api" / "stock" / "BBCA.json")["history"]["dates"][-1] == "2026-11-03"
+    assert read(out / "api" / "stock" / "ADRO.json")["history"] is None
+    assert "history" not in read(out / "api" / "today.json")["stocks"]["BBCA"]

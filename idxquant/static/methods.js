@@ -409,7 +409,14 @@ function methodTopics(cfg) {
           means: "How closely today's picks rise and fall together, and how many come from one sector.",
           formula: `Daily returns over the last ${cfg.conc_window_days} trading days\nCorrelation for every pair of picks\nWarn when:\n  ${cfg.conc_min_sector} or more picks, and at least ${percent(cfg.conc_sector_share)} of them, share a sector\n  3 or more picks are linked by correlations of ${cfg.conc_pair_corr} or more\n  the picks behave like half as many bets or fewer`,
           read: "Correlation runs from -1 to 1. Around 0 means unrelated, 1 means they move as one. In the heatmap, stocks that move together are placed side by side, so a block of deep colour is a group to size as one position. The colour is full from 0.8, since daily correlations between stocks seldom go higher.",
-          caution: `Correlations change, and they tend to rise in a sell-off, just when spreading out matters most. A stock with fewer than ${cfg.conc_min_days} days in the window is left out.`,
+          caution: `Correlations change, and they tend to rise in a sell-off, just when spreading out matters most. Stocks from different sectors can still move together, like a coal miner and the ship that carries its coal. A stock with fewer than ${cfg.conc_min_days} days in the window is left out.`,
+        },
+        {
+          name: "News tone",
+          means: "Whether the last week's headlines about a stock lean positive or negative.",
+          formula: `Headlines from Google News naming the ticker or company, last ${cfg.news_days} days\nThe same story from several outlets counts once\nEach headline: rising words (naik, borong, rekomendasi) minus falling ones (anjlok, lepas, denda)\n  the part of the headline naming the stock is read first\n  "tidak", "belum" and "bukan" flip the next word\nTone = (positive - negative) / headlines\nPositive at +${0.3} or more, negative at -${0.3} or less, mixed between`,
+          read: "Tested on 98 fresh headlines from ten stocks, read by hand: it agreed 72% of the time, never called the opposite direction, and was right 89% of the time when it called one. Its usual miss is reading a positive headline as neutral.",
+          caution: "It counts words, it doesn't understand sentences, so sarcasm, questions and unusual phrasing fool it. Headlines are often about the whole market. Read the articles before acting, and don't treat a busy news week as a signal on its own.",
         },
         {
           name: "Earnings and dividends",
@@ -417,6 +424,13 @@ function methodTopics(cfg) {
           formula: `Report dates from Yahoo, in Jakarta time\nNo announced date: last year's matching report + 1 year, labelled as an estimate\nFlagged on Today when a report is within ${cfg.event_warn_days} days\nUsual dividend months: months it paid in during each of the last 3 years`,
           read: "Prices can jump or fall sharply on results day. Knowing it's close lets you choose to buy before or after. A regular dividend month tells you roughly when the next one may come.",
           caution: "Yahoo's coverage of IDX dates is incomplete, and an estimate can be weeks out. Even an announced date can move if the company files early or late. The dividend yield uses the last 12 months only, so a one-off special payment can inflate it, and a company can cut or skip a dividend it paid for years.",
+        },
+        {
+          name: "Price chart",
+          means: "The stock's daily closing price over the last 3, 6 or 12 months, with today's play drawn on top.",
+          formula: "Price: each day's close\n50-day average: mean of the last 50 closes\n200-day average: mean of the last 200 closes\nShaded band: today's buy zone; dashed lines: target and stop",
+          read: "Price above a rising 200-day average is a long uptrend; below a falling one, a long downtrend. The 50-day average shows the shorter trend. The band and lines show where today's trade sits against the stock's recent range. Hover the chart to read any day's price and averages.",
+          caution: "Averages lag: they confirm a trend after it starts, and they whipsaw in a sideways market. Prices aren't adjusted for dividends here, so a large payout shows as a drop on its ex-date. A stock listed less than a year ago has a shorter chart, and its 200-day average starts late.",
         },
         {
           name: "Sector rotation",
@@ -431,13 +445,6 @@ function methodTopics(cfg) {
           formula: "n picks, correlation matrix C\nIndependent bets = n x n / (sum of every C squared)\nn unrelated picks give n; n picks moving as one give 1",
           read: "If 14 picks count as about 4 independent bets, splitting your money evenly across all 14 spreads your risk much less than it looks. Today's figure sits under the picks on the Today page, beside the heatmap that shows which picks drive it.",
           caution: "It only sees past daily moves, not shared exposures that haven't shown up yet, like one commodity price or one owner.",
-        },
-        {
-          name: "News tone",
-          means: "Whether the last week's headlines about a stock lean positive or negative.",
-          formula: `Headlines from Google News naming the ticker or company, last ${cfg.news_days} days\nThe same story from several outlets counts once\nEach headline: rising words (naik, borong, rekomendasi) minus falling ones (anjlok, lepas, denda)\n  the part of the headline naming the stock is read first\n  "tidak", "belum" and "bukan" flip the next word\nTone = (positive - negative) / headlines\nPositive at +${0.3} or more, negative at -${0.3} or less, mixed between`,
-          read: "Tested on 98 fresh headlines from ten stocks, read by hand: it agreed 72% of the time, never called the opposite direction, and was right 89% of the time when it called one. Its usual miss is reading a positive headline as neutral.",
-          caution: "It counts words, it doesn't understand sentences, so sarcasm, questions and unusual phrasing fool it. Headlines are often about the whole market. Read the articles before acting, and don't treat a busy news week as a signal on its own.",
         },
       ],
     },

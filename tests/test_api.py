@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 import threading
 
 from fastapi.testclient import TestClient
+import pandas as pd
 import pytest
 
 from idxquant.api import create_app
@@ -9,7 +10,7 @@ from idxquant.config import CONFIG
 from idxquant.factors import MIN_SECTOR_SIZE
 from idxquant.pipeline import WIB
 from idxquant.plays import SHORT_TREND_DAYS
-from idxquant.store import Store
+from idxquant.store import PRICE_COLUMNS, Store
 
 
 def snapshot(**overrides):
@@ -221,3 +222,12 @@ def test_today_includes_the_concentration_check(store):
 def test_today_includes_the_sector_rotation(store):
     store.save_snapshot("2026-10-30", snapshot(rotation={"weeks": ["2026-10-30"]}))
     assert client_for(store).get("/api/today").json()["rotation"]["weeks"] == ["2026-10-30"]
+
+
+def test_stock_page_carries_its_price_history(store):
+    days = pd.bdate_range(end="2026-10-30", periods=300)
+    store.save_prices("BBCA", pd.DataFrame({column: 1000.0 for column in PRICE_COLUMNS}, index=days))
+    store.save_snapshot("2026-10-30", snapshot())
+    page = client_for(store).get("/api/stock/BBCA").json()
+    assert page["history"]["dates"][-1] == "2026-10-30"
+    assert "history" not in client_for(store).get("/api/today").json()["stocks"]["BBCA"]

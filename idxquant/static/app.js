@@ -534,6 +534,8 @@ function drawCharts() {
   if (strip && marketTypeData) drawTypeStrip(strip, marketTypeData);
   const equity = app.querySelector(".equity-chart");
   if (equity && equityData) drawEquityChart(equity, equityData);
+  const prices = app.querySelector(".price-chart");
+  if (prices && priceStock) drawPriceChart(prices, priceStock);
 }
 
 // Grey label above its figure; the answer figure is drawn larger than its siblings
@@ -826,6 +828,7 @@ function renderStock(stock, today) {
     </div>
     ${summaryTiles(stock)}
     <div class="grid">
+      ${priceSection(stock)}
       ${stock.plays.length ? `<section class="panel full"><h2>The playbook${topicHelp("picks", "how picks are chosen")}</h2>${plays}
         ${performance(stock.plays.map((p) => p.kind), today.backtest)}</section>` : ""}
       ${eventsPanel(stock)}
@@ -843,7 +846,143 @@ function renderStock(stock, today) {
       <section class="panel flat full"><h2>Statistical arbitrage with other stocks${topicHelp("arbitrage", "statistical arbitrage")}</h2>${pairs}</section>
     </div>`;
   chartPlays = stock.plays;
+  priceStock = stock;
+  app.querySelectorAll("[data-range]").forEach((button) => {
+    button.addEventListener("click", () => {
+      priceDays = Number(button.dataset.range);
+      app.querySelectorAll("[data-range]").forEach((other) => other.setAttribute("aria-pressed", other === button));
+      drawCharts();
+    });
+  });
   drawCharts();
+}
+
+// ---- Price chart: the last year with its averages, and today's play drawn on top
+
+const PRICE_RANGES = [["3M", 63], ["6M", 126], ["1Y", 252]];
+let priceStock = null;
+let priceDays = 252;
+
+function priceSection(stock) {
+  const history = stock.history;
+  if (!history || history.close.length < 2) return "";
+  const play = stock.plays[0];
+  const key = (name, kind) => `<span class="key"><i class="swatch ${kind}"></i>${name}</span>`;
+  const levels = play ? `${key("Buy zone", "box s-zone")}${key("Target", "s-target")}${key("Stop", "s-stopline")}` : "";
+  const buttons = PRICE_RANGES.map(
+    ([label, days]) => `<button type="button" data-range="${days}" aria-pressed="${days === priceDays}">${label}</button>`,
+  ).join("");
+  return `<section class="panel full">
+      <div class="charthead"><h2>Price${help("Price chart")}</h2><div class="filters ranges">${buttons}</div></div>
+      <p class="note chartnote" id="price-change"></p>
+      <div class="legend">${key("Price", "s-price")}${key("50-day average", "s-ma50")}${key("200-day average", "s-ma200")}${levels}</div>
+      <div class="mc-chart price-chart"></div>
+    </section>`;
+}
+
+// One path through the values, broken wherever a value is missing (an average before it has enough days)
+function linePath(values, x, y) {
+  let path = "";
+  let drawing = false;
+  values.forEach((value, i) => {
+    if (missing(value)) {
+      drawing = false;
+      return;
+    }
+    path += `${drawing ? "L" : "M"}${x(i).toFixed(1)} ${y(value).toFixed(1)}`;
+    drawing = true;
+  });
+  return path;
+}
+
+function drawPriceChart(holder, stock) {
+  const full = stock.history;
+  const start = Math.max(0, full.close.length - priceDays);
+  const pick = (values) => values.slice(start);
+  const dates = pick(full.dates);
+  const close = pick(full.close);
+  const ma50 = pick(full.ma50);
+  const ma200 = pick(full.ma200);
+  const play = stock.plays[0];
+  const width = holder.clientWidth;
+  const height = 300;
+  const margin = { top: 12, right: play ? 104 : 16, bottom: 28, left: 58 };
+  const plotRight = width - margin.right;
+  const plotBottom = height - margin.bottom;
+  const levels = play ? [play.entry_low, play.entry_high, play.target, play.stop] : [];
+  const values = [...close, ...ma50, ...ma200, ...levels].filter((value) => !missing(value));
+  const pad = (Math.max(...values) - Math.min(...values)) * 0.06 || 1;
+  const low = Math.min(...values) - pad;
+  const high = Math.max(...values) + pad;
+  const x = (i) => margin.left + (i / Math.max(close.length - 1, 1)) * (plotRight - margin.left);
+  const y = (value) => margin.top + ((high - value) / (high - low)) * (plotBottom - margin.top);
+
+  const grid = niceTicks(low, high, 4)
+    .map((tick) => `<line class="grid" x1="${margin.left}" x2="${plotRight}" y1="${y(tick)}" y2="${y(tick)}"></line>
+      <text class="axis" x="${margin.left - 8}" y="${y(tick) + 4}" text-anchor="end">${price(tick)}</text>`)
+    .join("");
+  // A label on the first trading day of each month, every other month when the chart is long or narrow
+  const step = priceDays > 126 && width < 720 ? 2 : 1;
+  const months = dates
+    .flatMap((day, i) => (i && day.slice(0, 7) !== dates[i - 1].slice(0, 7) ? [i] : []))
+    .filter((_, i) => i % step === 0)
+    .map((i) => {
+      const day = new Date(`${dates[i]}T00:00:00`);
+      const label = day.getMonth() === 0 ? String(day.getFullYear()) : day.toLocaleDateString("en-GB", { month: "short" });
+      return `<text class="axis" x="${x(i)}" y="${plotBottom + 18}" text-anchor="middle">${label}</text>`;
+    })
+    .join("");
+  const level = (name, value, kind) => `<line class="level ${kind}" x1="${margin.left}" x2="${plotRight}" y1="${y(value)}" y2="${y(value)}"></line>
+    <text class="levelname" x="${plotRight + 8}" y="${y(value) + 4}">${name} ${price(value)}</text>`;
+  const zone = play
+    ? `<rect class="zone" x="${margin.left}" y="${y(play.entry_high)}" width="${Math.max(plotRight - margin.left, 0)}"
+        height="${Math.max(y(play.entry_low) - y(play.entry_high), 2)}"></rect>
+       ${level("Target", play.target, "l-target")}${level("Stop", play.stop, "l-stop")}`
+    : "";
+  const first = close[0];
+  const last = close[close.length - 1];
+  const label = `${stock.ticker} price over the last ${dates.length} trading days, from ${price(first)} to ${price(last)}.`;
+
+  holder.innerHTML = `<svg width="${width}" height="${height}" role="img" aria-label="${label}">
+      ${grid}${zone}
+      <path class="ma200" d="${linePath(ma200, x, y)}"></path>
+      <path class="ma50" d="${linePath(ma50, x, y)}"></path>
+      <path class="price-line" d="${linePath(close, x, y)}"></path>
+      ${months}
+      <line class="cross" y1="${margin.top}" y2="${plotBottom}" visibility="hidden"></line>
+      <circle class="hover-dot" r="3.5" visibility="hidden"></circle>
+      <rect class="hit" x="${margin.left}" y="${margin.top}" width="${Math.max(plotRight - margin.left, 0)}" height="${plotBottom - margin.top}"></rect>
+    </svg><div class="tip" hidden></div>`;
+
+  const change = last / first - 1;
+  const span = PRICE_RANGES.find(([, days]) => days === priceDays);
+  app.querySelector("#price-change").textContent =
+    `${change >= 0 ? "Up" : "Down"} ${pct(Math.abs(change))} over ${dates.length < priceDays ? `${dates.length} trading days` : span[0] === "1Y" ? "the last year" : `the last ${span[0].replace("M", " months")}`}, from Rp ${price(first)} to Rp ${price(last)}.`;
+
+  const cross = holder.querySelector(".cross");
+  const dot = holder.querySelector(".hover-dot");
+  const tip = holder.querySelector(".tip");
+  const hit = holder.querySelector(".hit");
+  hit.addEventListener("pointermove", (event) => {
+    const box = holder.getBoundingClientRect();
+    const share = (event.clientX - box.left - margin.left) / (plotRight - margin.left);
+    const i = Math.max(0, Math.min(close.length - 1, Math.round(share * (close.length - 1))));
+    const left = x(i);
+    cross.setAttribute("x1", left);
+    cross.setAttribute("x2", left);
+    cross.setAttribute("visibility", "visible");
+    dot.setAttribute("cx", left);
+    dot.setAttribute("cy", y(close[i]));
+    dot.setAttribute("visibility", "visible");
+    tip.hidden = false;
+    tip.innerHTML = `<b>${longDate(dates[i])}</b><br>Price ${price(close[i])}<br>50-day ${price(ma50[i])}<br>200-day ${price(ma200[i])}`;
+    tip.style.left = `${Math.min(left + 10, Math.max(width - 150, 0))}px`;
+  });
+  hit.addEventListener("pointerleave", () => {
+    tip.hidden = true;
+    cross.setAttribute("visibility", "hidden");
+    dot.setAttribute("visibility", "hidden");
+  });
 }
 
 function detailTable(title, rows, withSector = false) {
