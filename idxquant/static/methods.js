@@ -400,6 +400,34 @@ function methodTopics(cfg) {
       ],
     },
     {
+      id: "risk",
+      title: "Before you buy",
+      intro: "Two checks that don't change the picks but can change how you buy them: how much today's picks overlap, and what's coming up for each stock.",
+      items: [
+        {
+          name: "Overlap between picks",
+          means: "How closely today's picks rise and fall together, and how many come from one sector.",
+          formula: `Daily returns over the last ${cfg.conc_window_days} trading days\nCorrelation for every pair of picks\nWarn when:\n  ${cfg.conc_min_sector} or more picks, and at least ${percent(cfg.conc_sector_share)} of them, share a sector\n  3 or more picks are linked by correlations of ${cfg.conc_pair_corr} or more\n  the picks behave like half as many bets or fewer`,
+          read: "Correlation runs from -1 to 1. Around 0 means unrelated, 1 means they move as one. In the heatmap, stocks that move together are placed side by side, so a block of deep colour is a group to size as one position. The colour is full from 0.8, since daily correlations between stocks seldom go higher.",
+          caution: `Correlations change, and they tend to rise in a sell-off, just when spreading out matters most. A stock with fewer than ${cfg.conc_min_days} days in the window is left out.`,
+        },
+        {
+          name: "Earnings and dividends",
+          means: "When the next results are due, and how the stock pays dividends.",
+          formula: `Report dates from Yahoo, in Jakarta time\nNo announced date: last year's matching report + 1 year, labelled as an estimate\nFlagged on Today when a report is within ${cfg.event_warn_days} days\nUsual dividend months: months it paid in during each of the last 3 years`,
+          read: "Prices can jump or fall sharply on results day. Knowing it's close lets you choose to buy before or after. A regular dividend month tells you roughly when the next one may come.",
+          caution: "Yahoo's coverage of IDX dates is incomplete, and an estimate can be weeks out. Even an announced date can move if the company files early or late. The dividend yield uses the last 12 months only, so a one-off special payment can inflate it, and a company can cut or skip a dividend it paid for years.",
+        },
+        {
+          name: "Independent bets",
+          means: "How many unrelated positions today's picks add up to.",
+          formula: "n picks, correlation matrix C\nIndependent bets = n x n / (sum of every C squared)\nn unrelated picks give n; n picks moving as one give 1",
+          read: "If 14 picks count as about 4 independent bets, splitting your money evenly across all 14 spreads your risk much less than it looks.",
+          caution: "It only sees past daily moves, not shared exposures that haven't shown up yet, like one commodity price or one owner.",
+        },
+      ],
+    },
+    {
       id: "picks",
       title: "How picks are chosen",
       intro: "This is how the app goes from the stock list to today's ranked table.",

@@ -111,7 +111,7 @@ function pickRows(picks) {
     .map(
       (p) => `<tr data-href="#/stock/${esc(p.ticker)}">
         <td class="n">${p.rank}</td>
-        <td><a class="tk" href="#/stock/${esc(p.ticker)}">${esc(p.ticker)}</a><span class="nm">${esc(p.name)}</span></td>
+        <td><a class="tk" href="#/stock/${esc(p.ticker)}">${esc(p.ticker)}</a><span class="nm">${esc(p.name)}</span>${p.event ? `<span class="flag">${esc(p.event)}</span>` : ""}</td>
         <td>${tag(p.kind)}</td>
         <td>${planBar(p)}</td>
         <td class="n">${chanceBar(p.monte_carlo)}</td>
@@ -182,6 +182,60 @@ function finding(today) {
   return `<p class="finding">${split}${quiet}</p>`;
 }
 
+// Read before the table: buying several picks that move together is close to one large bet
+function overlapWarning(overlap) {
+  if (!overlap || !overlap.warnings.length) return "";
+  return `<div class="overlapnote" role="note"><b>Before buying several picks</b>${help("Overlap between picks")}
+      <ul>${overlap.warnings.map((warning) => `<li>${esc(warning)}</li>`).join("")}</ul>
+      <a href="#overlap" data-jump="overlap">See how the picks overlap</a></div>`;
+}
+
+// Correlation deepens one hue up to HEAT_TOP; below 0 stays neutral, since it's rare and small between IDX stocks.
+// Daily correlations between stocks seldom pass 0.8, so a 0-to-1 scale would leave most squares looking alike.
+const HEAT_TOP = 0.8;
+
+function heatCell(value, a, b) {
+  if (a === b) return `<td class="self" title="${esc(a)}"></td>`;
+  const label = missing(value) ? `${a} and ${b}: not enough shared days` : `${a} and ${b}: ${value.toFixed(2)}`;
+  const strength = missing(value) ? 0 : Math.max(0, Math.min(1, value / HEAT_TOP));
+  return `<td title="${esc(label)}" style="--heat:${(strength * 100).toFixed(0)}%"></td>`;
+}
+
+function overlapPanel(overlap) {
+  if (!overlap) return "";
+  const { tickers, matrix } = overlap;
+  const head = tickers.map((t) => `<th scope="col"><span>${esc(t)}</span></th>`).join("");
+  const rows = tickers
+    .map((a, i) => `<tr><th scope="row">${esc(a)}</th>${tickers.map((b, j) => heatCell(matrix[i][j], a, b)).join("")}</tr>`)
+    .join("");
+  const most = Math.max(...overlap.sectors.map((row) => row.count));
+  const sectors = overlap.sectors
+    .map(
+      (row) => `<div class="bar" title="${esc(row.tickers.join(", "))}"><span>${esc(row.sector)}</span>
+        <div class="track"><div class="fill" style="width:${((row.count / most) * 100).toFixed(0)}%"></div></div><span>${row.count}</span></div>`,
+    )
+    .join("");
+  const pairs = overlap.close_pairs.length
+    ? `<p class="note">Closest pairs: ${overlap.close_pairs.map((p) => `${esc(p.a)} and ${esc(p.b)} (${p.corr.toFixed(2)})`).join(", ")}.</p>`
+    : "";
+  const left = overlap.unmeasured.length ? ` ${overlap.unmeasured.map(esc).join(", ")} ${overlap.unmeasured.length === 1 ? "has" : "have"} too little history to measure.` : "";
+  return `<section class="panel overlap" id="overlap"><h2>How much the picks overlap${help("Overlap between picks")}</h2>
+      <div class="metrics">
+        ${metric("Independent bets", `${overlap.effective_bets.toFixed(1)} <small>of ${tickers.length}</small>`, "Independent bets", true)}
+        ${metric("Average correlation", overlap.avg_corr.toFixed(2), "Overlap between picks")}
+      </div>
+      <div class="overlapgrid">
+        <div><h3>Daily correlation, last ${overlap.window_days} trading days</h3>
+          <div class="heatwrap"><table class="heat" aria-label="Correlation between each pair of picks. Hover a square for its value.">
+            <thead><tr><th></th>${head}</tr></thead><tbody>${rows}</tbody></table></div>
+          <div class="heatscale"><span>0, unrelated</span><i></i><span>${HEAT_TOP} or more, move together</span></div>
+        </div>
+        <div><h3>Picks by sector</h3>${sectors}${pairs}</div>
+      </div>
+      <p class="note">Stocks that move together sit next to each other, so a block of deep colour is a group to treat as one bet. Hover a square for its value.${left}</p>
+    </section>`;
+}
+
 function renderToday(today) {
   const picks = today.picks.filter((p) => filter === "all" || p.kind === filter);
   const buttons = [["all", "All"], ...Object.entries(KINDS)]
@@ -202,7 +256,9 @@ function renderToday(today) {
     <p class="sub">Ranked by reward to risk after costs${help("Ranking", "ranking")}. Click a row for the full playbook.</p>
     ${finding(today)}
     ${marketPanel(today.regime, today.market_type)}
-    <div class="filters">${buttons}</div>${body}`;
+    ${overlapWarning(today.concentration)}
+    <div class="filters">${buttons}</div>${body}
+    ${overlapPanel(today.concentration)}`;
 
   app.querySelectorAll("[data-filter]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -214,6 +270,11 @@ function renderToday(today) {
     row.addEventListener("click", () => {
       location.hash = row.dataset.href;
     });
+  });
+  // The app routes on the hash, so this link scrolls instead of navigating
+  app.querySelector("[data-jump]")?.addEventListener("click", (event) => {
+    event.preventDefault();
+    document.getElementById(event.currentTarget.dataset.jump)?.scrollIntoView({ behavior: "smooth", block: "start" });
   });
 }
 
@@ -532,6 +593,41 @@ function pairRows(pairs) {
     .join("");
 }
 
+const longDate = (iso) =>
+  iso ? new Date(`${iso}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : DASH;
+const splitRatio = (ratio) => (ratio >= 1 ? `${+ratio.toFixed(2)}-for-1 split` : `1-for-${+(1 / ratio).toFixed(2)} reverse split`);
+
+function eventsPanel(stock) {
+  const found = stock.events;
+  const heading = `<h2>Earnings and dividends${help("Earnings and dividends")}</h2>`;
+  if (!found) return `<section class="panel full">${heading}<p class="note">Yahoo has no report or dividend dates for this stock.</p></section>`;
+  const earnings = found.earnings;
+  const dividend = found.dividend;
+  const nextReport = earnings && earnings.next
+    ? tile("Next earnings report", `${earnings.estimated ? "About " : ""}${longDate(earnings.next)}`,
+        earnings.estimated ? "Estimated from last year's date" : `Announced, in ${earnings.days} days`)
+    : tile("Next earnings report", "Not known", "Yahoo has no date yet");
+  const lastReport = tile("Last report", earnings && earnings.last ? longDate(earnings.last) : DASH, "The latest one Yahoo has on record");
+  const lastDividend = dividend
+    ? tile("Last dividend", rupiah(dividend.last.amount), `Ex-date ${longDate(dividend.last.date)}`)
+    : tile("Last dividend", "None", "No dividend on record");
+  const months = dividend ? dividend.usual_months : [];
+  const habit = months.length
+    ? tile(months.length === 1 ? "Usual dividend month" : "Usual dividend months", months.join(" and "), `Each of the last 3 years`)
+    : tile("Usual dividend month", "No pattern", dividend ? `Paid in ${dividend.years_paid} of the last 5 years` : "No dividend on record");
+  const income = tile("Dividend yield", dividend ? pct(dividend.yield_12m) : DASH, "Paid over the last 12 months");
+  const splits = found.splits.length
+    ? tile("Recent split", splitRatio(found.splits[found.splits.length - 1].ratio), longDate(found.splits[found.splits.length - 1].date))
+    : tile("Recent split", "None", "In the last 3 years");
+  const warning = found.soon
+    ? `<p class="eventwarn">${esc(found.soon)}. Results can move the price sharply either way, so think about whether to buy before or after them.</p>`
+    : "";
+  return `<section class="panel full">${heading}${warning}
+      <div class="eventgrid">${nextReport}${lastReport}${lastDividend}${habit}${income}${splits}</div>
+      <p class="note">Buying before the ex-date earns the dividend, but the price usually drops by about the dividend that morning.</p>
+    </section>`;
+}
+
 // Label above, figure below, and one short line of context: the five answers a buyer looks for first
 function tile(label, value, sub, helpKey) {
   return `<div class="tile"><span>${label}${helpKey ? help(helpKey, label) : ""}</span><b>${value}</b><small>${sub}</small></div>`;
@@ -701,6 +797,7 @@ function renderStock(stock, today) {
     <div class="grid">
       <section class="panel full"><h2>The playbook${topicHelp("picks", "how picks are chosen")}</h2>${plays}
         ${performance(stock.plays.map((p) => p.kind), today.backtest)}</section>
+      ${eventsPanel(stock)}
       ${modelsPanel(stock)}
       <section class="panel${yearly ? "" : " full"} factors"><h2>Factor scores${topicHelp("factors", "factor scores")}</h2>
         ${bar("Combined score", stock.scores.composite)}

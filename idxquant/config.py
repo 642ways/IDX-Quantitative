@@ -63,6 +63,14 @@ class Config:
     ml_neighbours: int = 30
     ml_examples: int = 6
     ml_recent_days: int = 365  # The same stock's own moments this recent don't count as similar setups
+    # Concentration of today's picks
+    conc_window_days: int = 126  # About six months of daily returns
+    conc_min_days: int = 60  # A stock with fewer days in the window is left out of the heatmap
+    conc_pair_corr: float = 0.6  # Daily returns this correlated count as moving together
+    conc_sector_share: float = 0.4
+    conc_min_sector: int = 3
+    # Upcoming events
+    event_warn_days: int = 14  # An earnings report this close is flagged before buying
     # Pick filters
     min_up_long: float = 0.10
     min_up_other: float = 0.03

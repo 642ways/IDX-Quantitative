@@ -24,6 +24,7 @@ EMPTY = {
     "stocks": {},
     "regime": None,
     "market_type": None,
+    "concentration": None,
     "backtest": None,
     "skipped": [],
     "warnings": [],

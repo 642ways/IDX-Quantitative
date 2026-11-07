@@ -114,3 +114,34 @@ def test_fetch_index_empty_when_yahoo_fails(monkeypatch):
 def test_fetch_usdidr_none_when_yahoo_fails(monkeypatch):
     monkeypatch.setattr(yahoo, "_download_fx", raise_error)
     assert yahoo.fetch_usdidr() is None
+
+
+def test_fetch_events_none_when_yahoo_fails(monkeypatch):
+    monkeypatch.setattr(yahoo, "_earnings_dates", raise_error)
+    monkeypatch.setattr(yahoo, "_actions", raise_error)
+    assert yahoo.fetch_events("BBCA") is None
+
+
+def test_fetch_events_keeps_dividends_and_splits_apart(monkeypatch):
+    actions = pd.DataFrame(
+        {"Dividends": [0.0, 210.0, 0.0], "Stock Splits": [0.0, 0.0, 5.0]},
+        index=pd.DatetimeIndex(["2026-01-05", "2026-06-22", "2021-10-13"], tz="Asia/Jakarta"),
+    )
+    monkeypatch.setattr(yahoo, "_earnings_dates", lambda symbol: ["2027-01-26"])
+    monkeypatch.setattr(yahoo, "_actions", lambda symbol: actions)
+    found = yahoo.fetch_events("BBCA")
+    assert found == {"earnings": ["2027-01-26"], "dividends": [["2026-06-22", 210.0]], "splits": [["2021-10-13", 5.0]]}
+
+
+def test_earnings_dates_are_read_in_jakarta_time(monkeypatch):
+    stamps = pd.DatetimeIndex(["2026-10-26 20:00"], tz="America/New_York")
+
+    class Ticker:
+        def __init__(self, symbol):
+            pass
+
+        def get_earnings_dates(self, limit):
+            return pd.DataFrame({"EPS Estimate": [1.0]}, index=stamps)
+
+    monkeypatch.setattr(yahoo.yf, "Ticker", Ticker)
+    assert yahoo._earnings_dates("BBCA.JK") == ["2026-10-27"]

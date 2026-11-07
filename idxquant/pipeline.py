@@ -8,7 +8,7 @@ import zlib
 import numpy as np
 import pandas as pd
 
-from idxquant import backtest, clusters, factors, learn, montecarlo, pairs, plays, regimes, universe, yahoo
+from idxquant import backtest, clusters, concentration, events, factors, learn, montecarlo, pairs, plays, regimes, universe, yahoo
 from idxquant.config import CONFIG
 from idxquant.trading import net_return
 
@@ -71,7 +71,7 @@ def _clean(value):
     return value
 
 
-def _fetch_all(tickers: list[str], fetcher) -> dict[str, tuple[pd.DataFrame, dict | None]]:
+def _fetch_all(tickers: list[str], fetcher) -> dict[str, tuple[pd.DataFrame, dict | None, dict | None]]:
     def fetch(ticker):
         try:
             prices = fetcher.fetch_prices(ticker)
@@ -81,7 +81,11 @@ def _fetch_all(tickers: list[str], fetcher) -> dict[str, tuple[pd.DataFrame, dic
             funda = fetcher.fetch_fundamentals(ticker)
         except Exception:
             funda = None
-        return ticker, (prices, funda)
+        try:
+            dated = fetcher.fetch_events(ticker)
+        except Exception:
+            dated = None  # Events are extra information, so a stock without them is still analysed
+        return ticker, (prices, funda, dated)
 
     with ThreadPoolExecutor(FETCH_WORKERS) as pool:
         return dict(pool.map(fetch, tickers))
@@ -231,7 +235,8 @@ def run(store, fetcher=yahoo, now: datetime | None = None, cfg=CONFIG, stocks: p
 
     fetched = _fetch_all(list(stocks["ticker"]), fetcher)
     skipped, frames, fundamentals, failures = [], {}, {}, 0
-    for ticker, (prices, funda) in fetched.items():
+    calendar = {ticker: dated for ticker, (_, _, dated) in fetched.items()}
+    for ticker, (prices, funda, _) in fetched.items():
         prices = _usable_bars(drop_partial_bar(prices, now, cfg), store, ticker)
         if prices.empty:
             failures += 1
@@ -317,6 +322,10 @@ def run(store, fetcher=yahoo, now: datetime | None = None, cfg=CONFIG, stocks: p
             result = {key: value for key, value in result.items() if key != "chart"}
         return asdict(play) | {"monte_carlo": result}
 
+    upcoming = {
+        ticker: events.summarise(calendar.get(ticker), now.date(), record["close"], cfg)
+        for ticker, record in records_by_ticker.items()
+    }
     picks = [
         play_page(play, with_chart=False)
         | {
@@ -325,9 +334,11 @@ def run(store, fetcher=yahoo, now: datetime | None = None, cfg=CONFIG, stocks: p
             "close": records_by_ticker[play.ticker]["close"],
             "pe": records_by_ticker[play.ticker]["pe"],
             "pbv": records_by_ticker[play.ticker]["pbv"],
+            "event": (upcoming.get(play.ticker) or {}).get("soon"),
         }
         for position, play in enumerate(ranked[: cfg.max_rows], start=1)
     ]
+    overlap = concentration.check(picks, frames, sectors, cfg)
 
     stock_pages = {}
     for ticker, record in records_by_ticker.items():
@@ -348,6 +359,7 @@ def run(store, fetcher=yahoo, now: datetime | None = None, cfg=CONFIG, stocks: p
             },
             "plays": [play_page(play) for play in all_plays if play.ticker == ticker],
             "pairs": _pair_rows(found, ticker),
+            "events": upcoming[ticker],
         }
 
     market = _market_closes(fetcher, store, now, cfg)
@@ -383,6 +395,7 @@ def run(store, fetcher=yahoo, now: datetime | None = None, cfg=CONFIG, stocks: p
             "backtest": results,
             "backtest_at": tested_at,
             "models": models,
+            "concentration": overlap,
             "universe_size": len(stocks),
             "skipped": skipped,
             "warnings": warnings,

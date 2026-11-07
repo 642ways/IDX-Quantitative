@@ -211,3 +211,8 @@ def test_auto_refresh_runs_when_data_is_old(store):
 def test_results_include_the_model_checks(store):
     store.save_snapshot("2026-10-30", snapshot(models={"long": {"auc": 0.56}}))
     assert client_for(store).get("/api/results").json()["models"]["long"]["auc"] == 0.56
+
+
+def test_today_includes_the_concentration_check(store):
+    store.save_snapshot("2026-10-30", snapshot(concentration={"effective_bets": 2.5}))
+    assert client_for(store).get("/api/today").json()["concentration"]["effective_bets"] == 2.5

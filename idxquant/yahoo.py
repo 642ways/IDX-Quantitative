@@ -154,6 +154,44 @@ def fetch_fundamentals(ticker: str) -> dict | None:
         return None
 
 
+EARNINGS_DATES = 12  # About three years of quarterly reports, past and announced
+
+
+def _earnings_dates(symbol: str) -> list[str]:
+    """Report dates in Jakarta time. Yahoo stamps them in New York time, which can fall on the day before."""
+    found = yf.Ticker(symbol).get_earnings_dates(limit=EARNINGS_DATES)
+    if found is None or found.empty:
+        return []
+    index = pd.DatetimeIndex(found.index)
+    local = index.tz_convert("Asia/Jakarta") if index.tz is not None else index
+    return sorted({day.strftime("%Y-%m-%d") for day in local})
+
+
+def _actions(symbol: str) -> pd.DataFrame:
+    return yf.Ticker(symbol).actions
+
+
+def fetch_events(ticker: str) -> dict | None:
+    """Earnings report dates, dividends paid and stock splits. Each part is left empty if Yahoo fails on it."""
+    symbol = f"{ticker}.JK"
+    result = {"earnings": [], "dividends": [], "splits": []}
+    try:
+        result["earnings"] = _earnings_dates(symbol)
+    except Exception:
+        pass
+    try:
+        actions = _actions(symbol)
+        index = pd.DatetimeIndex(actions.index)
+        actions.index = (index.tz_localize(None) if index.tz is not None else index).normalize()
+        for column, key in (("Dividends", "dividends"), ("Stock Splits", "splits")):
+            if column in actions:
+                paid = actions[column][actions[column] > 0]
+                result[key] = [[day.strftime("%Y-%m-%d"), float(value)] for day, value in paid.items()]
+    except Exception:
+        pass
+    return result if any(result.values()) else None
+
+
 def fetch_usdidr() -> float | None:
     try:
         frame = _download_fx()
