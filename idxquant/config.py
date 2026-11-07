@@ -69,6 +69,10 @@ class Config:
     conc_pair_corr: float = 0.6  # Daily returns this correlated count as moving together
     conc_sector_share: float = 0.4
     conc_min_sector: int = 3
+    # Sector rotation
+    rotation_weeks: int = 12
+    # News
+    news_days: int = 7  # Headlines this recent count toward a stock's news tone
     # Upcoming events
     event_warn_days: int = 14  # An earnings report this close is flagged before buying
     # Pick filters

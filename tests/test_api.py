@@ -216,3 +216,8 @@ def test_results_include_the_model_checks(store):
 def test_today_includes_the_concentration_check(store):
     store.save_snapshot("2026-10-30", snapshot(concentration={"effective_bets": 2.5}))
     assert client_for(store).get("/api/today").json()["concentration"]["effective_bets"] == 2.5
+
+
+def test_today_includes_the_sector_rotation(store):
+    store.save_snapshot("2026-10-30", snapshot(rotation={"weeks": ["2026-10-30"]}))
+    assert client_for(store).get("/api/today").json()["rotation"]["weeks"] == ["2026-10-30"]

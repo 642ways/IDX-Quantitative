@@ -8,8 +8,9 @@ import zlib
 import numpy as np
 import pandas as pd
 
-from idxquant import backtest, clusters, concentration, events, factors, learn, montecarlo, pairs, plays, regimes, universe, yahoo
+from idxquant import backtest, clusters, concentration, events, factors, learn, montecarlo, news, pairs, plays, regimes, universe, yahoo
 from idxquant.config import CONFIG
+from idxquant.sectors import rotation as sector_rotation
 from idxquant.trading import net_return
 
 WIB = timezone(timedelta(hours=7))
@@ -88,6 +89,28 @@ def _fetch_all(tickers: list[str], fetcher) -> dict[str, tuple[pd.DataFrame, dic
         return ticker, (prices, funda, dated)
 
     with ThreadPoolExecutor(FETCH_WORKERS) as pool:
+        return dict(pool.map(fetch, tickers))
+
+
+NEWS_WORKERS = 4  # Gentle on Google News: about 120 small requests a day
+
+
+def _news_source(fetcher):
+    """The real Yahoo fetcher pairs with Google News. Test fetchers bring their own headlines, or none."""
+    return news.fetch_headlines if fetcher is yahoo else getattr(fetcher, "fetch_news", None)
+
+
+def _fetch_news(tickers: list[str], names: dict[str, str], source) -> dict[str, list[dict] | None]:
+    if source is None:
+        return {}
+
+    def fetch(ticker):
+        try:
+            return ticker, source(ticker, names[ticker])
+        except Exception:
+            return ticker, None  # News is extra information, so a stock without it is still analysed
+
+    with ThreadPoolExecutor(NEWS_WORKERS) as pool:
         return dict(pool.map(fetch, tickers))
 
 
@@ -326,6 +349,7 @@ def run(store, fetcher=yahoo, now: datetime | None = None, cfg=CONFIG, stocks: p
         ticker: events.summarise(calendar.get(ticker), now.date(), record["close"], cfg)
         for ticker, record in records_by_ticker.items()
     }
+    headlines = _fetch_news(list(records_by_ticker), names, _news_source(fetcher))
     picks = [
         play_page(play, with_chart=False)
         | {
@@ -360,6 +384,7 @@ def run(store, fetcher=yahoo, now: datetime | None = None, cfg=CONFIG, stocks: p
             "plays": [play_page(play) for play in all_plays if play.ticker == ticker],
             "pairs": _pair_rows(found, ticker),
             "events": upcoming[ticker],
+            "news": news.summarise(headlines.get(ticker), ticker, names[ticker], now, cfg),
         }
 
     market = _market_closes(fetcher, store, now, cfg)
@@ -396,6 +421,7 @@ def run(store, fetcher=yahoo, now: datetime | None = None, cfg=CONFIG, stocks: p
             "backtest_at": tested_at,
             "models": models,
             "concentration": overlap,
+            "rotation": sector_rotation(frames, sectors, cfg) if frames else None,
             "universe_size": len(stocks),
             "skipped": skipped,
             "warnings": warnings,

@@ -599,8 +599,9 @@ const splitRatio = (ratio) => (ratio >= 1 ? `${+ratio.toFixed(2)}-for-1 split` :
 
 function eventsPanel(stock) {
   const found = stock.events;
+  const width = " full";
   const heading = `<h2>Earnings and dividends${help("Earnings and dividends")}</h2>`;
-  if (!found) return `<section class="panel full">${heading}<p class="note">Yahoo has no report or dividend dates for this stock.</p></section>`;
+  if (!found) return `<section class="panel${width}">${heading}<p class="note">Yahoo has no report or dividend dates for this stock.</p></section>`;
   const earnings = found.earnings;
   const dividend = found.dividend;
   const nextReport = earnings && earnings.next
@@ -622,9 +623,39 @@ function eventsPanel(stock) {
   const warning = found.soon
     ? `<p class="eventwarn">${esc(found.soon)}. Results can move the price sharply either way, so think about whether to buy before or after them.</p>`
     : "";
-  return `<section class="panel full">${heading}${warning}
+  return `<section class="panel${width}">${heading}${warning}
       <div class="eventgrid">${nextReport}${lastReport}${lastDividend}${habit}${income}${splits}</div>
       <p class="note">Buying before the ex-date earns the dividend, but the price usually drops by about the dividend that morning.</p>
+    </section>`;
+}
+
+const safeLink = (url) => (/^https?:\/\//.test(url || "") ? url : null);
+const TONES = { 1: ["up", "Positive"], 0: ["flat", "Neutral"], "-1": ["down", "Negative"] };
+
+function newsPanel(stock) {
+  const found = stock.news;
+  const days = (settings && settings.news_days) || 7;
+  const heading = `<h2>News, last ${days} days${help("News tone")}</h2>`;
+  if (!found) return `<section class="panel full">${heading}<p class="note">No headlines naming ${esc(stock.ticker)} in the last ${days} days.</p></section>`;
+  const word = newsWord(found);
+  const share = (count) => `${((count / found.count) * 100).toFixed(1)}%`;
+  const items = found.items
+    .map((item) => {
+      const [kind, label] = TONES[item.tone];
+      const link = safeLink(item.link);
+      const title = link ? `<a href="${esc(link)}" target="_blank" rel="noopener noreferrer">${esc(item.title)}</a>` : esc(item.title);
+      const when = new Date(item.published).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+      return `<li><i class="dot ${kind}" title="${label} tone" aria-label="${label} tone"></i><span>${title}<small>${esc(item.source || "")} · ${when}</small></span></li>`;
+    })
+    .join("");
+  return `<section class="panel full">${heading}
+      <div class="newshead"><b class="toneword">${word.html}</b>
+        <span>${found.positive} positive, ${found.neutral} neutral, ${found.negative} negative, from ${found.count} ${found.count === 1 ? "headline" : "headlines"}</span></div>
+      <div class="oddsbar" role="img" aria-label="${found.positive} positive, ${found.neutral} neutral, ${found.negative} negative headlines">
+        <span class="o-target" style="width:${share(found.positive)}"></span><span class="o-neither" style="width:${share(found.neutral)}"></span><span class="o-stop" style="width:${share(found.negative)}"></span>
+      </div>
+      <ul class="headlines">${items}</ul>
+      <p class="note">${found.count > found.items.length ? `The newest ${found.items.length} of ${found.count} are listed. ` : ""}The tone counts rising and falling words in each headline, so it misreads some. Read the article before acting on it.</p>
     </section>`;
 }
 
@@ -795,9 +826,10 @@ function renderStock(stock, today) {
     </div>
     ${summaryTiles(stock)}
     <div class="grid">
-      <section class="panel full"><h2>The playbook${topicHelp("picks", "how picks are chosen")}</h2>${plays}
-        ${performance(stock.plays.map((p) => p.kind), today.backtest)}</section>
+      ${stock.plays.length ? `<section class="panel full"><h2>The playbook${topicHelp("picks", "how picks are chosen")}</h2>${plays}
+        ${performance(stock.plays.map((p) => p.kind), today.backtest)}</section>` : ""}
       ${eventsPanel(stock)}
+      ${newsPanel(stock)}
       ${modelsPanel(stock)}
       <section class="panel${yearly ? "" : " full"} factors"><h2>Factor scores${topicHelp("factors", "factor scores")}</h2>
         ${bar("Combined score", stock.scores.composite)}
@@ -1186,6 +1218,180 @@ function modelCheckPanel(models) {
     </section>`;
 }
 
+// ---- Stocks page: sector rotation and a screener over every stock analysed today
+
+const ROTATION_FULL = 0.08; // A weekly move this big gets full colour; most sector weeks are well inside it
+const shortDate = (iso) => new Date(`${iso}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+
+function rotationCell(value, sector, week) {
+  if (missing(value)) return `<td class="empty-cell" title="${esc(sector)}, week to ${esc(week)}: no data"></td>`;
+  const strength = Math.min(1, Math.abs(value) / ROTATION_FULL);
+  return `<td class="${value >= 0 ? "rise" : "fall"}" style="--heat:${(strength * 100).toFixed(0)}%"
+    title="${esc(sector)}, week to ${esc(week)}: ${signedPct(value)}"></td>`;
+}
+
+function rotationPanel(rotation) {
+  if (!rotation) return "";
+  const weeks = rotation.weeks;
+  const heads = weeks
+    .map((week, i) => `<th scope="col">${i === weeks.length - 1 && rotation.partial ? "This week" : shortDate(week)}</th>`)
+    .join("");
+  const row = (r, total) => `<tr class="${total ? "total" : ""}"><th scope="row">${esc(r.sector)}<small>${r.stocks} ${r.stocks === 1 ? "stock" : "stocks"}</small></th>
+      ${r.returns.map((value, i) => rotationCell(value, r.sector, weeks[i])).join("")}
+      <td class="n">${signedPct(r.recent)}</td><td class="n">${signedPct(r.total)}</td></tr>`;
+  return `<section class="panel flat full"><h2>Sector rotation, last ${weeks.length} weeks${help("Sector rotation")}</h2>
+      <div class="rotationwrap"><table class="rotation">
+        <thead><tr><th></th>${heads}<th class="n">Last 4 weeks</th><th class="n">${weeks.length} weeks</th></tr></thead>
+        <tbody>${rotation.rows.map((r) => row(r, false)).join("")}${row(rotation.all, true)}</tbody>
+      </table></div>
+      <div class="heatscale pad"><span>Falling</span><i class="diverging"></i><span>Rising, full colour at ${pct(ROTATION_FULL, 0)} a week</span></div>
+      <p class="note pad">Each square is the average stock's return in that sector for the week, so a large company counts the same as a small one.
+        Sorted by the ${weeks.length}-week return. Hover a square for its value.${rotation.partial ? ` This week runs to ${esc(rotation.last_day)} so far.` : ""}</p>
+    </section>`;
+}
+
+const NEWS_LEAN = 0.3; // A balance of headlines this far either way reads as leaning, not mixed
+
+// The colour goes on a dot beside the word, so the text itself stays plain and readable
+function newsWord(found) {
+  if (!found) return { text: DASH, kind: "", html: DASH };
+  const [text, kind] = found.tone >= NEWS_LEAN ? ["Positive", "up"] : found.tone <= -NEWS_LEAN ? ["Negative", "down"] : ["Mixed", "flat"];
+  return { text, kind, html: `<i class="dot ${kind}" aria-hidden="true"></i>${text}` };
+}
+
+const screener = { query: "", sector: "", filters: new Set(), sort: "score", direction: -1 };
+
+const SCREENER_COLUMNS = [
+  ["ticker", "Stock", (s) => s.ticker, false],
+  ["sector", "Sector", (s) => s.sector, false],
+  ["close", "Price", (s) => s.close, true],
+  ["score", "Score", (s) => s.scores.composite, true, "Combined score"],
+  ["odds", "ML odds", (s) => s.insights && s.insights.long_odds && s.insights.long_odds.prob, true, "ML odds"],
+  ["pe", "PE", (s) => s.valuation.pe, true, "PE (price to earnings)"],
+  ["pbv", "PBV", (s) => s.valuation.pbv, true, "PBV (price to book value)"],
+  ["dividend", "Dividend yield", (s) => s.valuation.dividend_yield, true, "Dividend yield"],
+  ["report", "Next report", (s) => s.events && s.events.earnings && s.events.earnings.days, true, "Earnings and dividends"],
+  ["news", "News, 7 days", (s) => s.news && s.news.tone, true, "News tone"],
+];
+
+const SCREENER_FILTERS = [
+  ["play", "Has a play today", (s) => s.plays.length > 0],
+  ["report", "Report within 2 weeks", (s) => s.events && s.events.earnings && s.events.earnings.days !== null && s.events.earnings.days <= (settings ? settings.event_warn_days : 14)],
+  ["news", "In the news this week", (s) => s.news && s.news.count > 0],
+];
+
+function screenerRow(s) {
+  const odds = s.insights && s.insights.long_odds;
+  const earnings = s.events && s.events.earnings;
+  const report = earnings && earnings.next ? `${earnings.estimated ? "~" : ""}${shortDate(earnings.next)}` : DASH;
+  const word = newsWord(s.news);
+  const play = s.plays[0];
+  return `<tr data-href="#/stock/${esc(s.ticker)}">
+      <td><a class="tk" href="#/stock/${esc(s.ticker)}">${esc(s.ticker)}</a><span class="nm">${esc(s.name)}</span>${play ? tag(play.kind) : ""}</td>
+      <td>${esc(s.sector)}</td>
+      <td class="n">${price(s.close)}</td>
+      <td class="n">${missing(s.scores.composite) ? DASH : Math.round(s.scores.composite)}</td>
+      <td class="n">${odds ? pct(odds.prob, 0) : DASH}</td>
+      <td class="n">${times(s.valuation.pe)}</td>
+      <td class="n">${times(s.valuation.pbv)}</td>
+      <td class="n">${pct(s.valuation.dividend_yield)}</td>
+      <td class="n">${report}</td>
+      <td class="n"><span class="toneword">${word.html}</span>${s.news ? `<small>${s.news.count} ${s.news.count === 1 ? "headline" : "headlines"}</small>` : ""}</td>
+    </tr>`;
+}
+
+function screenedStocks(all) {
+  const query = screener.query.trim().toLowerCase();
+  const column = SCREENER_COLUMNS.find(([key]) => key === screener.sort);
+  const rows = all.filter(
+    (s) =>
+      (!query || s.ticker.toLowerCase().includes(query) || s.name.toLowerCase().includes(query)) &&
+      (!screener.sector || s.sector === screener.sector) &&
+      SCREENER_FILTERS.every(([key, , test]) => !screener.filters.has(key) || test(s)),
+  );
+  // Blanks always go last, whichever way the column is sorted
+  return rows.sort((a, b) => {
+    const x = column[2](a);
+    const y = column[2](b);
+    if (missing(x) || missing(y)) return missing(x) - missing(y);
+    return (typeof x === "string" ? x.localeCompare(y) : x - y) * screener.direction;
+  });
+}
+
+function drawScreener(all) {
+  const rows = screenedStocks(all);
+  app.querySelector("#screener-body").innerHTML = rows.length
+    ? rows.map(screenerRow).join("")
+    : `<tr><td colspan="${SCREENER_COLUMNS.length}" class="emptyrow">No stock matches. Clear a filter or the search.</td></tr>`;
+  app.querySelector("#screener-count").textContent = `Showing ${rows.length} of ${all.length} stocks`;
+  app.querySelectorAll("[data-sort]").forEach((th) => {
+    const active = th.dataset.sort === screener.sort;
+    th.setAttribute("aria-sort", active ? (screener.direction > 0 ? "ascending" : "descending") : "none");
+  });
+  app.querySelectorAll("#screener-body tr[data-href]").forEach((row) => {
+    row.addEventListener("click", () => {
+      location.hash = row.dataset.href;
+    });
+  });
+}
+
+function renderStocks(today) {
+  const all = Object.values(today.stocks || {});
+  if (!all.length) {
+    app.innerHTML = `<h1>All stocks</h1><div class="empty">No data yet.</div>`;
+    return;
+  }
+  const sectors = [...new Set(all.map((s) => s.sector))].sort();
+  const heads = SCREENER_COLUMNS.map(
+    ([key, label, , numeric, helpKey]) =>
+      `<th class="${numeric ? "n" : ""}" data-sort="${key}" aria-sort="none"><button type="button" class="sortbutton">${label}</button>${helpKey ? help(helpKey, label) : ""}</th>`,
+  ).join("");
+  const filters = SCREENER_FILTERS.map(
+    ([key, label]) => `<button type="button" data-screen="${key}" aria-pressed="${screener.filters.has(key)}">${label}</button>`,
+  ).join("");
+  app.innerHTML = `<h1>All stocks</h1>
+    <p class="sub">Every stock the app analysed today, and below it where each sector has been heading. Click a row for the stock's page.</p>
+    <div class="screenbar">
+      <input type="search" id="screener-search" placeholder="Search by ticker or name" aria-label="Search stocks" value="${esc(screener.query)}">
+      <select id="screener-sector" aria-label="Sector"><option value="">All sectors</option>
+        ${sectors.map((s) => `<option value="${esc(s)}"${s === screener.sector ? " selected" : ""}>${esc(s)}</option>`).join("")}</select>
+      <div class="filters">${filters}</div>
+    </div>
+    <p class="note" id="screener-count"></p>
+    <div class="tablewrap screener"><table>
+      <thead><tr>${heads}</tr></thead><tbody id="screener-body"></tbody></table></div>
+    <div class="grid rotationrow">${rotationPanel(today.rotation)}</div>`;
+
+  app.querySelector("#screener-search").addEventListener("input", (event) => {
+    screener.query = event.target.value;
+    drawScreener(all);
+  });
+  app.querySelector("#screener-sector").addEventListener("change", (event) => {
+    screener.sector = event.target.value;
+    drawScreener(all);
+  });
+  app.querySelectorAll("[data-screen]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const key = button.dataset.screen;
+      if (screener.filters.has(key)) screener.filters.delete(key);
+      else screener.filters.add(key);
+      button.setAttribute("aria-pressed", screener.filters.has(key));
+      drawScreener(all);
+    });
+  });
+  // A first click shows the useful end: cheapest PE and PBV, soonest report, A to Z, otherwise highest first
+  const lowFirst = new Set(["ticker", "sector", "pe", "pbv", "report"]);
+  app.querySelectorAll(".sortbutton").forEach((button) => {
+    button.addEventListener("click", () => {
+      const key = button.closest("th").dataset.sort;
+      screener.direction = screener.sort === key ? -screener.direction : lowFirst.has(key) ? 1 : -1;
+      screener.sort = key;
+      drawScreener(all);
+    });
+  });
+  drawScreener(all);
+}
+
 function renderResults(results) {
   const backtest = results.backtest || {};
   const tested = results.backtest_at ? `Tested ${esc(results.backtest_at)}, on up to 10 years of prices. ` : "";
@@ -1348,6 +1554,9 @@ async function route() {
     } else if (hash === "#/results") {
       setNav("results");
       renderResults(await getJson("/api/results"));
+    } else if (hash === "#/stocks") {
+      setNav("stocks");
+      renderStocks(today);
     } else {
       setNav("today");
       renderToday(today);

@@ -25,6 +25,7 @@ EMPTY = {
     "regime": None,
     "market_type": None,
     "concentration": None,
+    "rotation": None,
     "backtest": None,
     "skipped": [],
     "warnings": [],
