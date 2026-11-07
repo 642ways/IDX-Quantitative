@@ -20,6 +20,7 @@
   --mt-rebound: #1baf7a;
 }
 
+/* Dark follows the device unless the reader picked light; the Dark button sets it outright */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #15171a;
@@ -41,7 +42,30 @@
     --mt-weakening: #b58a12;
     --mt-panic: #d84a4a;
     --mt-rebound: #22a87c;
+    color-scheme: dark;
   }
+}
+:root[data-theme="dark"] {
+  --bg: #15171a;
+  --surface: #1d2024;
+  --text: #e8e9ea;
+  --muted: #9ba1a8;
+  --line: #30343a;
+  --accent: #7fb2ee;
+  --accent-soft: #233349;
+  --chip: #2a2e33;
+  --good: #5cc48b;
+  --bad: #ec8078;
+  --warn-bg: #3a2f12;
+  --warn-text: #efd68c;
+  --path-target: #3d87de;
+  --path-stop: #d9622f;
+  --mt-rally: #3d87de;
+  --mt-quiet: #505050;
+  --mt-weakening: #b58a12;
+  --mt-panic: #d84a4a;
+  --mt-rebound: #22a87c;
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -136,7 +160,7 @@ ol.steps li { margin-bottom: 2px; }
 .metric.answer b { font-size: 24px; }
 
 .bar { display: grid; grid-template-columns: 96px 1fr 32px; gap: 10px; align-items: center; margin: 6px 0; }
-.factors .bar { max-width: 640px; }
+.factors .bar { max-width: 640px; grid-template-columns: 140px 1fr 32px; }
 .track { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; }
 .fill { height: 100%; background: var(--accent); }
 
@@ -341,7 +365,66 @@ i.mt-rebound { background: var(--mt-rebound); }
   pointer-events: none;
 }
 
+.note.pad { padding: 0 16px 16px; }
+.importance { padding: 0 16px 16px; }
+.importance h3 { font-size: 13px; margin: 0 0 8px; }
+.importance .bar { grid-template-columns: 200px minmax(0, 1fr) 48px; max-width: 720px; }
+.themebutton { min-width: 64px; }
+
+/* Stock page: the five answers first */
+.tiles { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+.tile { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; min-width: 0; }
+.tile span { display: block; color: var(--muted); font-size: 12px; white-space: nowrap; }
+.tile b { display: block; font-size: 22px; font-weight: 600; line-height: 1.3; margin-top: 2px; }
+.tile small { display: block; color: var(--muted); font-size: 12px; }
+
+/* What the models see */
+.mlgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px 24px; align-items: start; }
+.mlcard { min-width: 0; }
+.mlcard h3 { font-size: 13px; margin: 0 0 10px; }
+.mlcard h4 { font-size: 12px; font-weight: 500; color: var(--muted); margin: 14px 0 6px; }
+.mlcard.weak .compare b, .mlcard.weak .driver b { color: var(--muted); }
+.mlcard.weak .fill, .mlcard.weak .diverge i { opacity: .45; }
+.compare { display: grid; grid-template-columns: 80px minmax(0, 1fr) 40px; gap: 6px 10px; align-items: center; }
+.compare span { color: var(--muted); font-size: 12px; }
+.compare b { text-align: right; font-weight: 600; }
+.compare .fill.base { background: var(--muted); }
+.driver { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(60px, 1fr) 56px; gap: 10px; align-items: center; margin: 6px 0; }
+.driver span { font-size: 13px; min-width: 0; }
+.driver small { display: block; color: var(--muted); font-size: 12px; }
+.driver b { text-align: right; font-weight: 500; white-space: nowrap; }
+.diverge { position: relative; height: 10px; background: linear-gradient(var(--line), var(--line)) center / 1px 100% no-repeat; }
+.diverge i { position: absolute; top: 1px; bottom: 1px; }
+.diverge .raise { left: 50%; background: var(--path-target); border-radius: 0 3px 3px 0; }
+.diverge .lower { right: 50%; background: var(--path-stop); border-radius: 3px 0 0 3px; }
+table.mini th, table.mini td { padding: 5px 6px; font-size: 13px; }
+table.mini th:first-child, table.mini td:first-child { padding-left: 0; }
+table.mini th:last-child, table.mini td:last-child { padding-right: 0; }
+table.mini small { display: block; color: var(--muted); font-size: 11px; }
+
+/* Revenue and net income by year */
+.ychart { position: relative; display: flex; gap: 6px; height: 150px; margin: 4px 0 24px; }
+.yzero { position: absolute; left: 0; right: 0; height: 1px; background: var(--muted); opacity: .5; }
+.ycol { position: relative; flex: 1; min-width: 0; }
+.ybars { position: absolute; inset: 0; }
+.ybars i { position: absolute; width: 38%; border-radius: 2px; }
+.ybars .yrev { left: 10%; background: var(--muted); opacity: .45; }
+.ybars .yinc { left: 52%; background: var(--accent); }
+.ybars .yinc.loss { background: var(--path-stop); }
+.ycol span { position: absolute; left: 0; right: 0; bottom: -20px; text-align: center; color: var(--muted); font-size: 11px; }
+.swatch.yrev { background: var(--muted); opacity: .45; }
+.swatch.yinc { background: var(--accent); }
+.yearly details .detail { margin-top: 8px; }
+/* Factor scores and the yearly chart share a row: both take its full height, and the chart grows to fill */
+.grid > .factors, .grid > .yearly { align-self: stretch; }
+.yearly { display: flex; flex-direction: column; }
+.yearly .ychart { flex: 1; min-height: 120px; height: auto; }
+
 footer { max-width: 1120px; margin: 0 auto; padding: 8px 24px 32px; color: var(--muted); font-size: 12px; }
+
+@media (max-width: 960px) {
+  .tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
 
 @media (max-width: 720px) {
   .topbar, main, .banner, footer { padding-left: 16px; padding-right: 16px; }
@@ -349,6 +432,8 @@ footer { max-width: 1120px; margin: 0 auto; padding: 8px 24px 32px; color: var(-
   .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .status { margin-left: 0; width: 100%; justify-content: space-between; }
   .mrow, .peerrow { grid-template-columns: 92px minmax(0, 1fr) auto; gap: 8px; }
+  .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tile:first-child { grid-column: 1 / -1; }
 }
 
 /* Phone: drop the rank column and pin the stock name, so a sideways scroll never loses the row */

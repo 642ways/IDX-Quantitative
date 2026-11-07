@@ -1,6 +1,6 @@
 # IDX Quant
 
-A personal app that ranks about 137 liquid Indonesian stocks (the IDX80 plus other actively traded names) after each trading day, using factor scores, statistical arbitrage, Monte Carlo simulation and market regime detection. Each pick comes with a playbook.
+A personal app that ranks about 137 liquid Indonesian stocks (the IDX80 plus other actively traded names) after each trading day, using factor scores, statistical arbitrage, Monte Carlo simulation, market regime detection and machine learning. Each pick comes with a playbook.
 
 This is model output, not personal financial advice. It doesn't know your money or risk limits, and it can be wrong. The app has no login, so anyone with its link can open it. Don't publish the link: sharing recommendations publicly or with paying users may fall under Indonesian investment advice rules.
 
@@ -250,6 +250,32 @@ flowchart TD
 - **Thin results are hidden:** the Results page hides any signal and market type with fewer than 30 trades.
 
 Market types are for information only and don't change the picks.
+
+### Machine learning
+
+Two models give more information on each stock page before you buy. They're shown beside the picks and don't change them.
+
+```mermaid
+flowchart TD
+    A["Every stock, once a month, for about 10 years"] --> B["Measure 9 things from prices and the IHSG"]
+    B --> C["Long term: did +35% come before -25% within 12 months?"]
+    B --> D["Short term: did each past breakout reach its target first?"]
+    B --> E["What did the price do 3 and 12 months later?"]
+    C --> F["Gradient-boosted trees: ML odds"]
+    D --> F
+    E --> G["k-nearest neighbours: similar past setups"]
+    F --> H["Walk-forward test on years the model never saw"]
+    G --> H
+    H --> I["Stock page shows each result with its test grade"]
+```
+
+- **ML odds:** a gradient-boosted classifier (scikit-learn's `HistGradientBoostingClassifier`, shallow and heavily smoothed) estimates how often a trade like today's reached its target before its stop. The page shows it next to the usual rate, with the four measures that moved it most.
+- **Similar past setups:** k-nearest neighbours finds the 30 past moments, across all stocks, that looked most like the stock today, and shows what happened 3 and 12 months later against all past setups. It matches on the stock's own measures only: with the IHSG measures in, every match came from the same few weeks as today. The stock's own last 12 months are left out, so it can't just match itself.
+- **Measures:** 1- and 3-month return, 12-month momentum, volatility, distance from the 1-year high and 200-day average, trading activity, and the IHSG's 3-month return and volatility. Free data has no history of company financials, so the models can't see value or quality.
+- **Walk-forward test:** each year is predicted by a model trained only on setups whose result was known before 1 January. An odds model counts as having an edge when its AUC is at least 0.55 and it beat the past hit rate. Similar setups count when their rank IC is at least 0.02. A model without an edge is still shown, labelled "no tested edge".
+- **First results, November 2026:** long-term odds had an AUC of 0.61, mostly from market volatility. Its most hopeful fifth of setups worked 51% of the time, against 33% for the least hopeful fifth. Short-term odds showed no edge (AUC 0.53). Similar setups didn't sort stocks within a month (rank IC about 0.00, below the 0.02 bar), so they're shown as history, not a forecast.
+
+The models retrain on every daily run, which adds about 15 seconds.
 
 ### Backtest
 

@@ -57,6 +57,12 @@ class Config:
     cluster_min_weeks: int = 104
     cluster_refit_weeks: int = 13
     cluster_min_trades: int = 30  # Below this, results by market type are treated as noise
+    # Machine learning on past setups
+    ml_step_days: int = 21  # One past setup per stock per month
+    ml_min_train: int = 1000  # Fewer finished setups than this and a model isn't trained
+    ml_neighbours: int = 30
+    ml_examples: int = 6
+    ml_recent_days: int = 365  # The same stock's own moments this recent don't count as similar setups
     # Pick filters
     min_up_long: float = 0.10
     min_up_other: float = 0.03

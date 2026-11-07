@@ -5,6 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="idx-mode" content="server">
   <title>IDX Quant</title>
+  <script>
+    // Apply a saved light or dark choice before the page draws, so it doesn't flash the other theme
+    try {
+      const saved = localStorage.getItem("idx-theme");
+      if (saved === "light" || saved === "dark") document.documentElement.dataset.theme = saved;
+    } catch (error) {}
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
@@ -20,6 +27,7 @@
     </nav>
     <div class="status">
       <span id="data-date"></span>
+      <button id="theme" type="button" class="themebutton"></button>
       <button id="refresh" type="button">Refresh</button>
     </div>
   </header>

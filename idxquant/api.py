@@ -84,6 +84,7 @@ def results_payload(store) -> dict:
         "market_type": latest.get("market_type"),
         "backtest": latest.get("backtest"),
         "backtest_at": latest.get("backtest_at"),
+        "models": latest.get("models"),
         "track_record": pipeline.track_record(snapshots, prices),
         "skipped": latest.get("skipped", []),
         "universe_size": latest.get("universe_size"),
