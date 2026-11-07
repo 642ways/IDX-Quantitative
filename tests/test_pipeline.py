@@ -477,3 +477,32 @@ def test_a_model_failure_warns_and_keeps_the_picks(tmp_path, monkeypatch):
     assert snapshot["models"] is None
     assert snapshot["stocks"]["AAAA"]["insights"] is None
     assert any("machine learning" in warning for warning in snapshot["warnings"])
+
+
+def test_snapshot_checks_how_much_the_picks_overlap(tmp_path):
+    tickers = ["AAAA", "BBBB", "CCCC"]
+    fetcher = FakeFetcher({t: frame(i, breakout=True) for i, t in enumerate(tickers)})
+    _, snapshot = execute(tmp_path, fetcher, tickers)
+    found = snapshot["concentration"]
+    assert set(found["tickers"]) == {pick["ticker"] for pick in snapshot["picks"]}
+    assert len(found["matrix"]) == len(found["tickers"])
+
+
+class EventFetcher(FakeFetcher):
+    def fetch_events(self, ticker):
+        return {"earnings": ["2026-11-05"], "dividends": [["2026-06-22", 50.0]], "splits": []}
+
+
+def test_stock_pages_and_picks_carry_upcoming_events(tmp_path):
+    tickers = ["AAAA", "BBBB"]
+    fetcher = EventFetcher({t: frame(i, breakout=True) for i, t in enumerate(tickers)})
+    _, snapshot = execute(tmp_path, fetcher, tickers)
+    page = snapshot["stocks"]["AAAA"]
+    assert page["events"]["earnings"]["next"] == "2026-11-05"
+    assert page["events"]["dividend"]["last"]["amount"] == 50.0
+    assert snapshot["picks"][0]["event"] == "Earnings report in 6 days"
+
+
+def test_events_missing_from_yahoo_leave_the_page_without_them(tmp_path):
+    _, snapshot = execute(tmp_path, FakeFetcher({"AAAA": frame(1)}), ["AAAA"])
+    assert snapshot["stocks"]["AAAA"]["events"] is None

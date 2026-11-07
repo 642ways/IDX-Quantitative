@@ -277,6 +277,13 @@ flowchart TD
 
 The models retrain on every daily run, which adds about 15 seconds.
 
+### Before you buy
+
+Two checks that don't change the picks but can change how you buy them.
+
+- **Overlap between picks:** the Today page measures how closely the picks' daily returns have moved together over the last 126 trading days, and shows it as a correlation heatmap ordered so stocks that move together sit side by side. It warns when 3 or more picks (and at least 40% of them) share a sector, when 3 or more picks are linked by correlations of 0.6 or more, or when the picks add up to half as many independent bets or fewer. Independent bets is the participation ratio of the correlation matrix: n² divided by the sum of every correlation squared.
+- **Earnings and dividends:** each stock page shows the next earnings report, the last dividend, the dividend yield over 12 months, the usual dividend month and any recent split, all from Yahoo. Report dates are converted to Jakarta time. When Yahoo has no announced date, the next report is estimated from the same report a year earlier and labelled as an estimate. A pick with a report due within 14 days is flagged on the Today page.
+
 ### Backtest
 
 Short-term, pair and momentum signals are tested on up to 10 years of prices. Decisions use only earlier data, trades enter at the next day's open, and fees are included. Backtests re-run every 30 days.

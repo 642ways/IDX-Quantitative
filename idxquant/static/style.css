@@ -420,6 +420,35 @@ table.mini small { display: block; color: var(--muted); font-size: 11px; }
 .yearly { display: flex; flex-direction: column; }
 .yearly .ychart { flex: 1; min-height: 120px; height: auto; }
 
+/* Today: overlap between picks */
+.flag { display: inline-block; margin-top: 4px; padding: 0 6px; border-radius: 4px; background: var(--warn-bg); color: var(--warn-text); font-size: 11px; font-weight: 500; white-space: nowrap; }
+.overlapnote { margin-bottom: 12px; padding: 10px 14px; background: var(--warn-bg); color: var(--warn-text); border-radius: 8px; font-size: 13px; }
+.overlapnote ul { margin: 4px 0 6px; padding-left: 18px; }
+.overlapnote a { color: inherit; text-decoration: underline; }
+.overlapnote .help { border-color: currentColor; color: inherit; }
+.panel.overlap { margin-top: 16px; }
+.overlap .metrics { grid-template-columns: repeat(2, minmax(0, 160px)); margin-bottom: 12px; }
+.overlap .metric small { font-size: 13px; color: var(--muted); font-weight: 400; }
+.overlapgrid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 16px 32px; align-items: start; }
+.overlapgrid h3 { font-size: 13px; margin: 0 0 8px; }
+.overlapgrid .bar { grid-template-columns: 110px 1fr 24px; }
+.heatwrap { overflow-x: auto; }
+table.heat { width: auto; border-collapse: separate; border-spacing: 2px; }
+table.heat th { padding: 0 4px; border: none; font-size: 11px; color: var(--muted); font-weight: 400; }
+table.heat thead th { height: 52px; vertical-align: bottom; }
+table.heat thead th span { display: inline-block; writing-mode: vertical-rl; transform: rotate(180deg); }
+table.heat tbody th { text-align: right; }
+table.heat td { width: 22px; height: 22px; padding: 0; border: none; border-radius: 3px; background: color-mix(in srgb, var(--accent) var(--heat, 0%), var(--line)); }
+table.heat td.self { background: transparent; box-shadow: inset 0 0 0 1px var(--line); }
+.heatscale { display: flex; align-items: center; gap: 8px; margin-top: 8px; color: var(--muted); font-size: 11px; }
+.heatscale i { width: 120px; height: 8px; border-radius: 4px; background: linear-gradient(90deg, var(--line), var(--accent)); }
+
+/* Stock page: earnings and dividends */
+.eventgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.eventgrid .tile { background: var(--bg); border: none; }
+.eventgrid .tile b { font-size: 17px; }
+.eventwarn { margin: 0 0 12px; padding: 8px 12px; background: var(--warn-bg); color: var(--warn-text); border-radius: 6px; font-size: 13px; }
+
 footer { max-width: 1120px; margin: 0 auto; padding: 8px 24px 32px; color: var(--muted); font-size: 12px; }
 
 @media (max-width: 960px) {
@@ -434,6 +463,8 @@ footer { max-width: 1120px; margin: 0 auto; padding: 8px 24px 32px; color: var(-
   .mrow, .peerrow { grid-template-columns: 92px minmax(0, 1fr) auto; gap: 8px; }
   .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .tile:first-child { grid-column: 1 / -1; }
+  .eventgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .overlapgrid { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* Phone: drop the rank column and pin the stock name, so a sideways scroll never loses the row */
