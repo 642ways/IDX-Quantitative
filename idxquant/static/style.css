@@ -449,6 +449,53 @@ table.heat td.self { background: transparent; box-shadow: inset 0 0 0 1px var(--
 .eventgrid .tile b { font-size: 17px; }
 .eventwarn { margin: 0 0 12px; padding: 8px 12px; background: var(--warn-bg); color: var(--warn-text); border-radius: 6px; font-size: 13px; }
 
+/* Stocks page: sector rotation */
+.rotationwrap { overflow-x: auto; padding: 0 16px; }
+table.rotation { width: auto; min-width: 100%; border-collapse: separate; border-spacing: 2px; }
+table.rotation th { padding: 2px 6px; border: none; font-size: 11px; color: var(--muted); font-weight: 400; white-space: nowrap; }
+table.rotation tbody th { text-align: left; color: var(--text); font-size: 13px; }
+table.rotation tbody th small { display: block; color: var(--muted); font-size: 11px; }
+table.rotation td { min-width: 34px; height: 24px; padding: 0 6px; border: none; border-radius: 3px; }
+.rotationrow { margin-top: 24px; }
+table.rotation td.rise { background: color-mix(in srgb, var(--path-target) var(--heat, 0%), var(--line)); }
+table.rotation td.fall { background: color-mix(in srgb, var(--path-stop) var(--heat, 0%), var(--line)); }
+table.rotation td.n { background: none; font-size: 13px; }
+table.rotation tr.total th, table.rotation tr.total td.n { font-weight: 600; }
+table.rotation tr.total th { border-top: 1px solid var(--line); }
+.heatscale i.diverging { background: linear-gradient(90deg, var(--path-stop), var(--line), var(--path-target)); }
+.heatscale.pad { padding: 0 16px; margin-top: 10px; }
+
+/* Stocks page: screener */
+.screenbar { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin: 20px 0 4px; }
+.screenbar input, .screenbar select { font: inherit; padding: 5px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--text); }
+.screenbar input { width: 240px; max-width: 100%; }
+.screenbar .filters { margin: 0; }
+.screener th button.sortbutton { padding: 0; border: none; background: none; color: inherit; font: inherit; cursor: pointer; }
+.screener th[aria-sort="ascending"] .sortbutton::after { content: " ↑"; }
+.screener th[aria-sort="descending"] .sortbutton::after { content: " ↓"; }
+.screener th[aria-sort="ascending"], .screener th[aria-sort="descending"] { color: var(--text); }
+.screener td .tag { margin-top: 4px; }
+.screener td small { display: block; color: var(--muted); font-size: 11px; }
+.screener td.emptyrow { text-align: center; color: var(--muted); padding: 24px; }
+.toneword { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.screener .toneword { justify-content: flex-end; }
+
+/* Stock page: news */
+.newshead { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; margin-bottom: 8px; }
+.newshead b { font-size: 17px; }
+.newshead span { color: var(--muted); font-size: 13px; }
+ul.headlines { list-style: none; margin: 4px 0 0; padding: 0; }
+ul.headlines li { display: flex; gap: 10px; align-items: baseline; padding: 7px 0; border-bottom: 1px solid var(--line); }
+ul.headlines li:last-child { border-bottom: none; }
+ul.headlines small { display: block; color: var(--muted); font-size: 12px; }
+ul.headlines a { color: var(--text); }
+ul.headlines a:hover { color: var(--accent); }
+.dot { flex: none; width: 8px; height: 8px; border-radius: 50%; transform: translateY(-1px); }
+.dot.up { background: var(--path-target); }
+.dot.down { background: var(--path-stop); }
+.dot.flat { background: var(--muted); opacity: .5; }
+.o-neither { background: var(--line); }
+
 footer { max-width: 1120px; margin: 0 auto; padding: 8px 24px 32px; color: var(--muted); font-size: 12px; }
 
 @media (max-width: 960px) {

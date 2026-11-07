@@ -402,7 +402,7 @@ function methodTopics(cfg) {
     {
       id: "risk",
       title: "Before you buy",
-      intro: "Two checks that don't change the picks but can change how you buy them: how much today's picks overlap, and what's coming up for each stock.",
+      intro: "Checks that don't change the picks but can change how you buy them: how much today's picks overlap, what's coming up for each stock, what the news says, and where each sector is heading.",
       items: [
         {
           name: "Overlap between picks",
@@ -419,11 +419,25 @@ function methodTopics(cfg) {
           caution: "Yahoo's coverage of IDX dates is incomplete, and an estimate can be weeks out. Even an announced date can move if the company files early or late. The dividend yield uses the last 12 months only, so a one-off special payment can inflate it, and a company can cut or skip a dividend it paid for years.",
         },
         {
+          name: "Sector rotation",
+          means: "Which sectors have been rising or falling, week by week, over the last few months.",
+          formula: `Each week: the average return of the sector's stocks, each counting the same\nLast ${cfg.rotation_weeks} weeks, week ending Friday\nSorted by the ${cfg.rotation_weeks}-week total`,
+          read: "A sector turning from orange to blue across recent weeks is drawing money in. Compare each row with All stocks to see which sectors lead or lag the market.",
+          caution: "Small sectors with one or two stocks swing hard on a single name. Equal weighting means a small stock moves its sector as much as a giant does.",
+        },
+        {
           name: "Independent bets",
           means: "How many unrelated positions today's picks add up to.",
           formula: "n picks, correlation matrix C\nIndependent bets = n x n / (sum of every C squared)\nn unrelated picks give n; n picks moving as one give 1",
-          read: "If 14 picks count as about 4 independent bets, splitting your money evenly across all 14 spreads your risk much less than it looks.",
+          read: "If 14 picks count as about 4 independent bets, splitting your money evenly across all 14 spreads your risk much less than it looks. Today's figure sits under the picks on the Today page, beside the heatmap that shows which picks drive it.",
           caution: "It only sees past daily moves, not shared exposures that haven't shown up yet, like one commodity price or one owner.",
+        },
+        {
+          name: "News tone",
+          means: "Whether the last week's headlines about a stock lean positive or negative.",
+          formula: `Headlines from Google News naming the ticker or company, last ${cfg.news_days} days\nThe same story from several outlets counts once\nEach headline: rising words (naik, borong, rekomendasi) minus falling ones (anjlok, lepas, denda)\n  the part of the headline naming the stock is read first\n  "tidak", "belum" and "bukan" flip the next word\nTone = (positive - negative) / headlines\nPositive at +${0.3} or more, negative at -${0.3} or less, mixed between`,
+          read: "Tested on 98 fresh headlines from ten stocks, read by hand: it agreed 72% of the time, never called the opposite direction, and was right 89% of the time when it called one. Its usual miss is reading a positive headline as neutral.",
+          caution: "It counts words, it doesn't understand sentences, so sarcasm, questions and unusual phrasing fool it. Headlines are often about the whole market. Read the articles before acting, and don't treat a busy news week as a signal on its own.",
         },
       ],
     },

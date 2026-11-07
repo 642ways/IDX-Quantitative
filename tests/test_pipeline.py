@@ -506,3 +506,28 @@ def test_stock_pages_and_picks_carry_upcoming_events(tmp_path):
 def test_events_missing_from_yahoo_leave_the_page_without_them(tmp_path):
     _, snapshot = execute(tmp_path, FakeFetcher({"AAAA": frame(1)}), ["AAAA"])
     assert snapshot["stocks"]["AAAA"]["events"] is None
+
+
+def test_snapshot_carries_sector_rotation(tmp_path):
+    _, snapshot = execute(tmp_path, FakeFetcher({"AAAA": frame(1), "BBBB": frame(3)}), ["AAAA", "BBBB"])
+    analysed = {page["sector"] for page in snapshot["stocks"].values()}
+    assert {row["sector"] for row in snapshot["rotation"]["rows"]} == analysed
+    assert len(snapshot["rotation"]["weeks"]) == CONFIG.rotation_weeks
+
+
+class NewsFetcher(FakeFetcher):
+    def fetch_news(self, ticker, name):
+        published = (FRIDAY_EVENING - timedelta(days=1)).isoformat()
+        return [{"title": f"Saham {ticker} melonjak", "source": "Contoh", "link": "https://example.com", "published": published}]
+
+
+def test_stock_pages_carry_recent_news_and_its_tone(tmp_path):
+    _, snapshot = execute(tmp_path, NewsFetcher({"AAAA": frame(1)}), ["AAAA"])
+    found = snapshot["stocks"]["AAAA"]["news"]
+    assert found["count"] == 1
+    assert found["items"][0]["tone"] == 1
+
+
+def test_without_a_news_source_pages_have_no_news(tmp_path):
+    _, snapshot = execute(tmp_path, FakeFetcher({"AAAA": frame(1)}), ["AAAA"])
+    assert snapshot["stocks"]["AAAA"]["news"] is None
