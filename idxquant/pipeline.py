@@ -8,7 +8,7 @@ import zlib
 import numpy as np
 import pandas as pd
 
-from idxquant import backtest, clusters, factors, montecarlo, pairs, plays, regimes, universe, yahoo
+from idxquant import backtest, clusters, factors, learn, montecarlo, pairs, plays, regimes, universe, yahoo
 from idxquant.config import CONFIG
 from idxquant.trading import net_return
 
@@ -359,6 +359,16 @@ def run(store, fetcher=yahoo, now: datetime | None = None, cfg=CONFIG, stocks: p
     if market_type is None:
         warnings.append("Not enough IHSG or USD/IDR data today, so there's no market type reading.")
 
+    models = None
+    short_tickers = {play.ticker for play in all_plays if play.kind == "short"}
+    try:
+        models, insights = learn.run(frames, market, short_tickers, cfg) if frames else (None, {})
+    except Exception:
+        insights = {}  # The picks don't depend on the models, so they still go out
+        warnings.append("The machine learning models failed today, so stock pages have no ML odds or similar setups.")
+    for ticker, page in stock_pages.items():
+        page["insights"] = insights.get(ticker)
+
     results, tested_at = _backtests(frames, sectors, previous, now.date(), market, features, cfg)
     data_date = data_day.strftime("%Y-%m-%d")
     snapshot = _clean(
@@ -372,6 +382,7 @@ def run(store, fetcher=yahoo, now: datetime | None = None, cfg=CONFIG, stocks: p
             "market_type": market_type,
             "backtest": results,
             "backtest_at": tested_at,
+            "models": models,
             "universe_size": len(stocks),
             "skipped": skipped,
             "warnings": warnings,

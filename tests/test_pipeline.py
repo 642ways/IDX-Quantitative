@@ -456,3 +456,24 @@ def test_pair_rows_flip_the_gap_history_for_the_rich_side():
     pair = Pair("AAAA", "BBBB", 1.0, 0.0, 0.01, 8.0, -2.2, 0.0, 0.05, recent_z=(-1.0, -2.2))
     assert _pair_rows([pair], "AAAA")[0]["gap_history"] == [-1.0, -2.2]
     assert _pair_rows([pair], "BBBB")[0]["gap_history"] == [1.0, 2.2]
+
+
+def test_snapshot_carries_the_model_checks_and_each_stocks_insights(tmp_path):
+    _, snapshot = execute(tmp_path, FakeFetcher({"AAAA": frame(1), "BBBB": frame(2)}), ["AAAA", "BBBB"])
+    assert set(snapshot["models"]) == {"long", "short", "similar", "features", "grades"}
+    assert all("insights" in page for page in snapshot["stocks"].values())
+
+
+class BrokenModels(Exception):
+    pass
+
+
+def test_a_model_failure_warns_and_keeps_the_picks(tmp_path, monkeypatch):
+    def broken(*args, **kwargs):
+        raise BrokenModels("no convergence")
+
+    monkeypatch.setattr("idxquant.learn.run", broken)
+    _, snapshot = execute(tmp_path, FakeFetcher({"AAAA": frame(1)}), ["AAAA"])
+    assert snapshot["models"] is None
+    assert snapshot["stocks"]["AAAA"]["insights"] is None
+    assert any("machine learning" in warning for warning in snapshot["warnings"])

@@ -532,6 +532,151 @@ function pairRows(pairs) {
     .join("");
 }
 
+// Label above, figure below, and one short line of context: the five answers a buyer looks for first
+function tile(label, value, sub, helpKey) {
+  return `<div class="tile"><span>${label}${helpKey ? help(helpKey, label) : ""}</span><b>${value}</b><small>${sub}</small></div>`;
+}
+
+function summaryTiles(stock) {
+  const play = stock.plays[0];
+  const mc = play && play.monte_carlo;
+  const insights = stock.insights || {};
+  const odds = insights.long_odds;
+  const similar = insights.similar;
+  const untested = odds && odds.check && !odds.check.edge ? ", no tested edge" : "";
+  return `<div class="tiles">
+      ${tile("Today's play", play ? KINDS[play.kind] : "None", play ? `Buy ${price(play.entry_low)} to ${price(play.entry_high)}` : "No setup qualifies today", play ? PLAY_HELP[play.kind] : null)}
+      ${tile("Combined score", missing(stock.scores.composite) ? DASH : Math.round(stock.scores.composite), "out of 100", "Combined score")}
+      ${tile("Monte Carlo chance", mc ? pct(mc.target_prob, 0) : DASH, mc ? "of reaching the target" : "No play to simulate", ENDINGS)}
+      ${tile("ML odds, long term", odds ? pct(odds.prob, 0) : DASH, odds ? `Usual ${pct(odds.base_rate, 0)}${untested}` : "Not enough history", "ML odds")}
+      ${tile("After similar setups", similar ? signedPct(similar.median_3m) : DASH, similar ? `Median over 3 months, ${pct(similar.up_3m, 0)} rose` : "Not enough history", "Similar past setups")}
+    </div>`;
+}
+
+const RETURN_FEATURES = new Set(["ret_1m", "ret_3m", "mom_12_1", "from_high", "vs_ma200", "ihsg_3m"]);
+
+function featureValue(driver) {
+  if (RETURN_FEATURES.has(driver.feature)) return signedPct(driver.value);
+  if (driver.feature === "activity") return `${Math.exp(driver.value).toFixed(1)}x its 6-month average`;
+  return `${pct(driver.value, 0)} a year`;
+}
+
+function percentileWords(share) {
+  if (missing(share)) return "";
+  return share >= 0.5 ? `, higher than ${pct(share, 0)} of past setups` : `, lower than ${pct(1 - share, 0)} of past setups`;
+}
+
+const points = (value) => `${value > 0 ? "+" : ""}${Math.round(value * 100)} pts`;
+
+// Each measure's push on the odds, drawn out from a centre line: right raised them, left lowered them
+function driverRows(drivers) {
+  const widest = Math.max(0.05, ...drivers.map((d) => Math.abs(d.effect)));
+  return drivers
+    .map(
+      (d) => `<div class="driver">
+        <span>${esc(d.label)}<small>${featureValue(d)}${percentileWords(d.percentile)}</small></span>
+        <div class="diverge" role="img" aria-label="${esc(d.label)} moved the odds ${points(d.effect)}">
+          <i class="${d.effect >= 0 ? "raise" : "lower"}" style="width:${((Math.abs(d.effect) / widest) * 50).toFixed(1)}%"></i>
+        </div>
+        <b>${points(d.effect)}</b>
+      </div>`,
+    )
+    .join("");
+}
+
+function oddsCard(title, odds) {
+  if (!odds) return "";
+  const check = odds.check || {};
+  const auc = missing(check.auc) ? DASH : check.auc.toFixed(2);
+  const verdict = check.edge
+    ? `On years it hadn't seen, its most hopeful fifth of setups worked ${pct(check.top_rate, 0)} of the time and its least hopeful fifth ${pct(check.bottom_rate, 0)} (AUC ${auc}).`
+    : `It showed no edge on years it hadn't seen (AUC ${auc}), so treat this as no information.`;
+  const width = (value) => `${(value * 100).toFixed(1)}%`;
+  return `<div class="mlcard${check.edge ? "" : " weak"}">
+      <h3>${title}${help("ML odds")}</h3>
+      <div class="compare">
+        <span>This setup</span><div class="track"><div class="fill" style="width:${width(odds.prob)}"></div></div><b>${pct(odds.prob, 0)}</b>
+        <span>Usual</span><div class="track"><div class="fill base" style="width:${width(odds.base_rate)}"></div></div><b>${pct(odds.base_rate, 0)}</b>
+      </div>
+      <h4>What moved the odds${help("What moved the odds")}</h4>
+      ${driverRows(odds.drivers)}
+      <p class="note">${verdict} Learned from ${odds.samples.toLocaleString("en-US")} past setups.</p>
+    </div>`;
+}
+
+function similarCard(similar) {
+  if (!similar) return "";
+  const check = similar.check || {};
+  const ic = missing(check.rank_ic) ? DASH : check.rank_ic.toFixed(2);
+  const verdict = check.edge
+    ? `In testing they sorted stocks by their next 3 months with a rank IC of ${ic}.`
+    : `In testing they didn't sort stocks into winners and losers (rank IC ${ic}), so read this as history, not a forecast.`;
+  const cell = (median, up) => (missing(median) ? DASH : `${signedPct(median)}<small>${pct(up, 0)} rose</small>`);
+  const base = similar.baseline;
+  const examples = similar.examples
+    .map((e) => `<tr><td><a class="tk" href="#/stock/${esc(e.ticker)}">${esc(e.ticker)}</a></td><td>${esc(e.date)}</td>
+      <td class="n">${signedPct(e.ret_3m)}</td><td class="n">${signedPct(e.ret_12m)}</td></tr>`)
+    .join("");
+  return `<div class="mlcard${check.edge ? "" : " weak"}">
+      <h3>${similar.count} similar past setups${help("Similar past setups")}</h3>
+      <table class="mini"><thead><tr><th></th><th class="n">3 months later</th><th class="n">12 months later</th></tr></thead><tbody>
+        <tr><td>Similar setups</td><td class="n">${cell(similar.median_3m, similar.up_3m)}</td><td class="n">${cell(similar.median_12m, similar.up_12m)}</td></tr>
+        <tr><td>All setups</td><td class="n">${cell(base.median_3m, base.up_3m)}</td><td class="n">${cell(base.median_12m, base.up_12m)}</td></tr>
+      </tbody></table>
+      <h4>Closest matches</h4>
+      <table class="mini"><thead><tr><th>Stock</th><th>From</th><th class="n">3 months</th><th class="n">12 months</th></tr></thead><tbody>${examples}</tbody></table>
+      <p class="note">Medians of the price change, with dividends, before costs. ${verdict}</p>
+    </div>`;
+}
+
+function modelsPanel(stock) {
+  const insights = stock.insights || {};
+  const heading = `<h2>What the models see${topicHelp("ml", "machine learning")}</h2>`;
+  if (!insights.long_odds && !insights.similar) {
+    return `<section class="panel full">${heading}<p class="note">Not enough price history for the models yet.</p></section>`;
+  }
+  const levels = settings ? `+${pct(settings.long_target_cap, 0)} before -${pct(settings.long_stop, 0)}` : "Target before stop";
+  return `<section class="panel full">${heading}
+      <p class="note chartnote">Trained on about ten years of every stock's prices. For information only: they don't change the picks.</p>
+      <div class="mlgrid">
+        ${oddsCard(`ML odds: ${levels} within 12 months`, insights.long_odds)}
+        ${oddsCard("ML odds: this short-term breakout", insights.short_odds)}
+        ${similarCard(insights.similar)}
+      </div>
+    </section>`;
+}
+
+// Revenue and net income per year as paired columns; a loss hangs below the zero line
+function yearlyChart(stock) {
+  const years = (stock.years || []).filter((y) => !missing(y.revenue) || !missing(y.net_income));
+  if (!years.length) return "";
+  const values = years.flatMap((y) => [y.revenue, y.net_income]).filter((v) => !missing(v));
+  const top = Math.max(0, ...values);
+  const span = top - Math.min(0, ...values) || 1;
+  const zero = (top / span) * 100;
+  const place = (value) => {
+    if (missing(value)) return "display:none";
+    const height = (Math.abs(value) / span) * 100;
+    return `top:${(value >= 0 ? zero - height : zero).toFixed(1)}%;height:${height.toFixed(1)}%`;
+  };
+  const columns = years
+    .map(
+      (y) => `<div class="ycol" title="${esc(y.year)}: revenue ${money(y.revenue)}, net income ${money(y.net_income)}, ROE ${pct(y.roe, 0)}">
+        <div class="ybars"><i class="yrev" style="${place(y.revenue)}"></i><i class="yinc${y.net_income < 0 ? " loss" : ""}" style="${place(y.net_income)}"></i></div>
+        <span>${esc(y.year)}</span>
+      </div>`,
+    )
+    .join("");
+  const key = (name, kind) => `<span class="key"><i class="swatch box ${kind}"></i>${name}</span>`;
+  return `<section class="panel yearly"><h2>Revenue and net income${help("Yearly history", "yearly history")}</h2>
+      <div class="legend">${key("Revenue", "yrev")}${key("Net income", "yinc")}</div>
+      <div class="ychart" role="img" aria-label="Revenue and net income for ${years.length} years. Hover a year for its figures.">
+        <div class="yzero" style="top:${zero.toFixed(1)}%"></div>${columns}
+      </div>
+      <details class="more"><summary>Yearly figures</summary>${yearlyHistory(stock)}</details>
+    </section>`;
+}
+
 function renderStock(stock, today) {
   const v = stock.valuation;
   const plays = stock.plays.length
@@ -544,24 +689,27 @@ function renderStock(stock, today) {
     ? `<table><thead><tr><th>Paired with</th><th>Gap, last ${settings ? settings.z_window : 60} days</th><th class="n">Gap now${help("Gap", "gap")}</th>
         <th class="n">Half-life${help("Half-life")}</th><th>Signal${help("Signal")}</th></tr></thead>
         <tbody>${pairRows(stock.pairs)}</tbody></table>`
-    : `<p class="note" style="padding:0 16px 16px">No statistically sound pair today.</p>`;
+    : `<p class="note pad">No statistically sound pair today.</p>`;
 
+  const yearly = yearlyChart(stock);
   app.innerHTML = `<div class="head">
       <div><h1>${esc(stock.ticker)} <span class="sub">${esc(stock.name)}</span></h1>
       <span class="note">${esc(stock.sector)}</span></div>
       <div class="price">Rp ${price(stock.close)}</div>
     </div>
+    ${summaryTiles(stock)}
     <div class="grid">
       <section class="panel full"><h2>The playbook${topicHelp("picks", "how picks are chosen")}</h2>${plays}
         ${performance(stock.plays.map((p) => p.kind), today.backtest)}</section>
-      <section class="panel full factors"><h2>Factor scores${topicHelp("factors", "factor scores")}</h2>
+      ${modelsPanel(stock)}
+      <section class="panel${yearly ? "" : " full"} factors"><h2>Factor scores${topicHelp("factors", "factor scores")}</h2>
         ${bar("Combined score", stock.scores.composite)}
         ${bar("Value", stock.scores.value)}${bar("Quality", stock.scores.quality)}
         ${bar("Momentum", stock.scores.momentum)}${bar("Size", stock.scores.size)}
         <p class="note">0 to 100 against the stock list. Size is shown for information and isn't in the combined score.</p>
       </section>
+      ${yearly}
       ${valuationDetails(stock, dated, today)}
-      ${yearlyHistory(stock)}
       ${stock.plays.map(chartSection).join("")}
       <section class="panel flat full"><h2>Statistical arbitrage with other stocks${topicHelp("arbitrage", "statistical arbitrage")}</h2>${pairs}</section>
     </div>`;
@@ -687,10 +835,8 @@ function yearlyHistory(stock) {
       <td class="n">${times(y.pbv)}</td><td class="n">${pct(y.roe, 0)}</td><td class="n">${pct(y.net_margin)}</td>
       <td class="n">${money(y.revenue)}</td><td class="n">${money(y.net_income)}</td></tr>`)
     .join("");
-  return `<section class="panel flat full"><h2>Yearly history${help("Yearly history", "yearly history")}</h2>
-    <table><thead><tr><th>Year</th><th class="n">Price</th><th class="n">EPS</th><th class="n">PE</th><th class="n">PBV</th>
-    <th class="n">ROE</th><th class="n">Net margin</th><th class="n">Revenue</th><th class="n">Net income</th></tr></thead><tbody>${rows}</tbody></table>
-  </section>`;
+  return `<div class="detail"><table><thead><tr><th>Year</th><th class="n">Price</th><th class="n">EPS</th><th class="n">PE</th><th class="n">PBV</th>
+    <th class="n">ROE</th><th class="n">Net margin</th><th class="n">Revenue</th><th class="n">Net income</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
 function winBar(share) {
@@ -723,7 +869,7 @@ function calibrationPanel(calibration) {
     <table><thead><tr><th>Play</th><th>Predicted odds of hitting target</th><th class="n">Past cases</th><th class="n">Predicted</th><th class="n">Actually hit</th></tr></thead>
     <tbody>${calibrationRows("Short term", calibration.short)}${calibrationRows("Long term price levels", calibration.long)}
     <tr><td>Pair trade</td><td colspan="4">Not checked: too few past trades</td></tr></tbody></table>
-    <p class="note" style="padding:0 16px 16px">Each past prediction used only the data available at that date, and the two right-hand columns should be close.
+    <p class="note pad">Each past prediction used only the data available at that date, and the two right-hand columns should be close.
     The long-term row tests the +${pct(calibration.long.target, 0)} and -${pct(calibration.long.stop, 0)} levels on every stock each quarter, not the factor score, and its cases overlap in time.</p>
   </section>`;
 }
@@ -848,7 +994,7 @@ function regimePanels(regime, splits) {
     ? `<section class="panel flat full"><h2>Signals by market regime${help("Signals by market regime")}</h2>
         <table><thead><tr><th>Signal</th><th>Market</th><th class="n">Trades</th><th class="n">Winners</th><th class="n">Average</th><th class="n">Worst drawdown</th></tr></thead>
         <tbody>${regimeRows("Short term", splits.short)}${regimeRows("Pair trade", splits.pair)}${regimeRows("Momentum, per month held", splits.momentum)}</tbody></table>
-        <p class="note" style="padding:0 16px 16px">Each trade is labelled by the state known on its signal day. The earliest years are left out, because the model needs 2 years of data to start.</p>
+        <p class="note pad">Each trade is labelled by the state known on its signal day. The earliest years are left out, because the model needs 2 years of data to start.</p>
       </section>`
     : "";
   return `<section class="panel full"><h2>Market regime history${help("Market regime")}</h2>
@@ -885,7 +1031,7 @@ function marketTypePanels(type, splits) {
     ? `<section class="panel flat full"><h2>Signals by market type${help("Signals by market type")}</h2>
         <table><thead><tr><th>Signal</th><th>Market type</th><th class="n">Trades</th><th class="n">Winners</th><th class="n">Average</th></tr></thead>
         <tbody>${typeRows("Short term", splits.short)}${typeRows("Pair trade", splits.pair)}${typeRows("Momentum, per month held", splits.momentum)}</tbody></table>
-        <p class="note" style="padding:0 16px 16px">Results with fewer than ${settings.cluster_min_trades} trades are hidden, because they'd mostly be noise. Market types are for information and don't change the picks.</p>
+        <p class="note pad">Results with fewer than ${settings.cluster_min_trades} trades are hidden, because they'd mostly be noise. Market types are for information and don't change the picks.</p>
       </section>`
     : "";
   return `<section class="panel full"><h2>Market type history${help("Market type")}</h2>
@@ -899,6 +1045,50 @@ function marketTypePanels(type, splits) {
     </section>${signals}`;
 }
 
+const verdict = (grade) => (grade && grade.edge ? "Edge" : "No edge");
+
+function oddsCheckRow(label, check, grade) {
+  if (!check) return `<tr><td>${label}</td><td colspan="6">Not enough finished setups to test</td></tr>`;
+  return `<tr><td>${label}</td><td class="n">${check.samples.toLocaleString("en-US")}</td><td class="n">${check.years[0]} to ${check.years[1]}</td>
+    <td class="n">${missing(check.auc) ? DASH : check.auc.toFixed(2)}</td><td class="n">${pct(check.top_rate, 0)}</td>
+    <td class="n">${pct(check.bottom_rate, 0)}</td><td>${verdict(grade)}</td></tr>`;
+}
+
+// What the latest test year says each measure was worth: how far AUC fell when it was shuffled
+function importanceBars(importance) {
+  if (!importance || !importance.length) return "";
+  const widest = Math.max(0.005, ...importance.map((item) => item.drop));
+  return importance
+    .map(
+      (item) => `<div class="bar"><span>${esc(item.label)}</span>
+        <div class="track"><div class="fill" style="width:${((Math.max(item.drop, 0) / widest) * 100).toFixed(1)}%"></div></div>
+        <span>${item.drop.toFixed(3)}</span></div>`,
+    )
+    .join("");
+}
+
+function modelCheckPanel(models) {
+  if (!models) return "";
+  const grades = models.grades || {};
+  const similar = models.similar;
+  const similarRow = similar
+    ? `<tr><td>Similar setups, next 3 months</td><td class="n">${similar.samples.toLocaleString("en-US")}</td><td class="n">${similar.months} months</td>
+        <td class="n">${missing(similar.rank_ic) ? DASH : similar.rank_ic.toFixed(2)}</td><td class="n">${signedPct(similar.top_return)}</td>
+        <td class="n">${signedPct(similar.bottom_return)}</td><td>${verdict(grades.similar)}</td></tr>`
+    : `<tr><td>Similar setups</td><td colspan="6">Not enough history to test</td></tr>`;
+  const long = models.long;
+  return `<section class="panel flat full"><h2>Machine learning, tested on unseen years${help("Model test")}</h2>
+      <table><thead><tr><th>Model</th><th class="n">Tested setups</th><th class="n">Tested on</th><th class="n">AUC or rank IC${help("AUC")}</th>
+        <th class="n">Most hopeful fifth</th><th class="n">Least hopeful fifth</th><th>Verdict</th></tr></thead>
+      <tbody>${oddsCheckRow("ML odds, long term", long, grades.long)}${oddsCheckRow("ML odds, short term", models.short, grades.short)}${similarRow}</tbody></table>
+      <p class="note pad">For the odds models, the fifths show how often their most and least hopeful setups actually worked.
+        For similar setups, they show the average 3-month return of the stocks they ranked highest and lowest${help("Rank IC")}.
+        Each year was predicted by a model trained only on results known before it began.</p>
+      ${long && long.importance.length ? `<div class="importance"><h3>What the long-term odds model leaned on</h3>${importanceBars(long.importance)}
+        <p class="note">How much the AUC fell when each measure was shuffled, in the latest test year. Bigger means the model relied on it more.</p></div>` : ""}
+    </section>`;
+}
+
 function renderResults(results) {
   const backtest = results.backtest || {};
   const tested = results.backtest_at ? `Tested ${esc(results.backtest_at)}, on up to 10 years of prices. ` : "";
@@ -906,7 +1096,7 @@ function renderResults(results) {
   const shown = showAllRecord ? newest : newest.slice(0, RECORD_ROWS);
   const viewAll =
     newest.length > RECORD_ROWS && !showAllRecord
-      ? `<p class="note" style="padding:0 16px 16px">Showing ${RECORD_ROWS} of ${newest.length.toLocaleString("en-US")}.
+      ? `<p class="note pad">Showing ${RECORD_ROWS} of ${newest.length.toLocaleString("en-US")}.
           <button type="button" class="textbutton" data-view-all>View all</button></p>`
       : "";
   const record = newest.length
@@ -917,7 +1107,7 @@ function renderResults(results) {
               <td class="n">${price(r.entry)}</td><td>${esc(r.outcome)}</td><td class="n">${signedPct(r.return)}</td></tr>`,
           )
           .join("")}</tbody></table>${viewAll}`
-    : `<p class="note" style="padding:0 16px 16px">Picks are saved each day, and their real outcomes will appear here.</p>`;
+    : `<p class="note pad">Picks are saved each day, and their real outcomes will appear here.</p>`;
   const reasons = [...new Set(results.skipped.map((s) => s.reason))];
   const skipped = results.skipped.length
     ? `<p class="note">Left out of the latest run, ${results.skipped.length} stocks. ${reasons
@@ -933,13 +1123,14 @@ function renderResults(results) {
         <tbody>${resultRow("Short term", backtest.short)}${resultRow("Pair trade, buying the cheap stock only", backtest.pair)}
         ${resultRow("Momentum, per month held", backtest.momentum)}
         <tr><td>Long term, value and quality</td><td colspan="4">Not backtested: free data has too little financial history</td></tr></tbody></table>
-        <p class="note" style="padding:0 16px 16px">${tested}The stock list is today's index members, which flatters past results because
+        <p class="note pad">${tested}The stock list is today's index members, which flatters past results because
         companies that collapsed aren't in it. Drawdown compounds each month's average trade. Past results don't predict future ones.</p>
       </section>
       ${equityPanel(backtest.equity)}
       ${regimePanels(results.regime, backtest.regimes)}
       ${marketTypePanels(results.market_type, backtest.market_types)}
       ${calibrationPanel(backtest.calibration)}
+      ${modelCheckPanel(results.models)}
       <section class="panel flat full"><h2>Track record of real picks</h2>${recordSummary(results.track_record)}${record}</section>
     </div>${skipped}`;
   app.querySelector("[data-view-all]")?.addEventListener("click", () => {
@@ -1079,6 +1270,31 @@ refreshButton.addEventListener("click", async () => {
   await fetch("/api/refresh", { method: "POST" });
   pollRefresh();
 });
+
+// Light or dark: follows the device until the reader picks one, and the choice is remembered on this browser
+const themeButton = document.getElementById("theme");
+const systemDark = window.matchMedia("(prefers-color-scheme: dark)");
+const currentTheme = () => document.documentElement.dataset.theme || (systemDark.matches ? "dark" : "light");
+
+function showThemeButton() {
+  const next = currentTheme() === "dark" ? "light" : "dark";
+  themeButton.textContent = next === "dark" ? "Dark" : "Light";
+  themeButton.setAttribute("aria-label", `Switch to the ${next} theme`);
+}
+
+themeButton.addEventListener("click", () => {
+  const next = currentTheme() === "dark" ? "light" : "dark";
+  document.documentElement.dataset.theme = next;
+  try {
+    localStorage.setItem("idx-theme", next);
+  } catch (error) {
+    // Private windows can block storage; the switch still works for this visit
+  }
+  showThemeButton();
+  drawCharts();
+});
+systemDark.addEventListener("change", showThemeButton);
+showThemeButton();
 
 window.addEventListener("hashchange", route);
 window.addEventListener("resize", drawCharts);

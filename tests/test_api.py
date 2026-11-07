@@ -206,3 +206,8 @@ def test_auto_refresh_runs_when_data_is_old(store):
     client.get("/api/today")
     wait_for_refresh(client)
     assert calls == [1]
+
+
+def test_results_include_the_model_checks(store):
+    store.save_snapshot("2026-10-30", snapshot(models={"long": {"auc": 0.56}}))
+    assert client_for(store).get("/api/results").json()["models"]["long"]["auc"] == 0.56
