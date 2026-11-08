@@ -63,6 +63,26 @@ class Store:
             row = db.execute("SELECT payload FROM snapshots ORDER BY run_date DESC LIMIT 1").fetchone()
         return json.loads(row[0]) if row else None
 
+    def news_history(self) -> list[dict]:
+        """Each saved day's news tone per stock, in the shape of a snapshot but without the rest of it.
+
+        SQLite reads the tones out of the saved JSON, so the full daily results never load into memory.
+        """
+        with self._connect() as db:
+            rows = db.execute(
+                """
+                SELECT json_extract(s.payload, '$.data_date'), stock.key,
+                       json_extract(stock.value, '$.news.tone'), json_extract(stock.value, '$.news.count')
+                FROM snapshots AS s, json_each(s.payload, '$.stocks') AS stock
+                WHERE json_extract(stock.value, '$.news') IS NOT NULL
+                ORDER BY s.run_date
+                """
+            ).fetchall()
+        days = {}
+        for day, ticker, tone, count in rows:
+            days.setdefault(day, {})[ticker] = {"news": {"tone": tone, "count": count}}
+        return [{"data_date": day, "stocks": stocks} for day, stocks in days.items()]
+
     def all_snapshots(self) -> list[dict]:
         with self._connect() as db:
             rows = db.execute("SELECT payload FROM snapshots ORDER BY run_date").fetchall()

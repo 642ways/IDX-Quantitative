@@ -496,6 +496,19 @@ ul.headlines a:hover { color: var(--accent); }
 .dot.flat { background: var(--muted); opacity: .5; }
 .o-neither { background: var(--line); }
 
+/* Information diffusion */
+.panel.catchup { margin-top: 16px; }
+.flowgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 32px; }
+.flowgrid h3 { font-size: 13px; margin: 0 0 6px; }
+ul.flowlist { list-style: none; margin: 0; padding: 0; }
+ul.flowlist li { display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; gap: 8px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--line); }
+ul.flowlist li:last-child { border-bottom: none; }
+ul.flowlist .nm { display: inline; }
+.flowmove { color: var(--muted); font-size: 12px; text-align: right; white-space: nowrap; }
+.flowstatus { margin: 0 0 10px; font-size: 13px; }
+.flowstatus .tag { margin-right: 6px; }
+h3.subhead { font-size: 13px; margin: 4px 16px 0; }
+
 /* Stock page: price chart */
 .charthead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
 .charthead h2 { margin: 0; }
@@ -528,6 +541,7 @@ footer { max-width: 1120px; margin: 0 auto; padding: 8px 24px 32px; color: var(-
   .tile:first-child { grid-column: 1 / -1; }
   .eventgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .overlapgrid { grid-template-columns: minmax(0, 1fr); }
+  .flowgrid { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* Phone: drop the rank column and pin the stock name, so a sideways scroll never loses the row */

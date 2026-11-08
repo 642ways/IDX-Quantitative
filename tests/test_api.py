@@ -231,3 +231,8 @@ def test_stock_page_carries_its_price_history(store):
     page = client_for(store).get("/api/stock/BBCA").json()
     assert page["history"]["dates"][-1] == "2026-10-30"
     assert "history" not in client_for(store).get("/api/today").json()["stocks"]["BBCA"]
+
+
+def test_today_includes_information_diffusion(store):
+    store.save_snapshot("2026-10-30", snapshot(diffusion={"candidates": []}))
+    assert client_for(store).get("/api/today").json()["diffusion"] == {"candidates": []}

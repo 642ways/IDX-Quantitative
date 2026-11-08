@@ -8,7 +8,7 @@ import zlib
 import numpy as np
 import pandas as pd
 
-from idxquant import backtest, clusters, concentration, events, factors, learn, montecarlo, news, pairs, plays, regimes, universe, yahoo
+from idxquant import backtest, clusters, concentration, diffusion, events, factors, learn, montecarlo, news, pairs, plays, regimes, universe, yahoo
 from idxquant.config import CONFIG
 from idxquant.sectors import rotation as sector_rotation
 from idxquant.trading import net_return
@@ -236,6 +236,29 @@ def _play_odds(play, frames, found, data_day, cfg) -> dict | None:
     return montecarlo.simulate_pair(a_log, b_log, pair, *levels, other, rng, cfg=cfg, with_chart=True)
 
 
+def _diffusion(store, frames, sectors, stock_pages, data_date, warnings, cfg) -> dict | None:
+    """Each stock's place among its sector's leaders and followers, the lead-lag test, and the news drift so far."""
+    for page in stock_pages.values():
+        page["diffusion"] = None
+    if not frames:
+        return None
+    try:
+        flow = diffusion.today(frames, sectors, cfg)
+        for ticker, page in stock_pages.items():
+            page["diffusion"] = flow["stocks"].get(ticker)
+        today_news = {"data_date": data_date, "stocks": {t: {"news": page.get("news")} for t, page in stock_pages.items()}}
+        history = [day for day in store.news_history() if day["data_date"] != data_date] + [today_news]
+        return {
+            "check": diffusion.check(diffusion.panel(frames, sectors, cfg), cfg),
+            "candidates": flow["candidates"],
+            "warnings": flow["warnings"],
+            "news": diffusion.news_drift(history, frames, sectors, cfg),
+        }
+    except Exception:
+        warnings.append("The information diffusion check failed today, so there are no catch-up signals.")
+        return None
+
+
 def _failed_run(previous: dict | None, message: str, now: datetime) -> dict:
     base = previous or {
         "run_date": None,
@@ -408,6 +431,7 @@ def run(store, fetcher=yahoo, now: datetime | None = None, cfg=CONFIG, stocks: p
 
     results, tested_at = _backtests(frames, sectors, previous, now.date(), market, features, cfg)
     data_date = data_day.strftime("%Y-%m-%d")
+    flow = _diffusion(store, frames, sectors, stock_pages, data_date, warnings, cfg)
     snapshot = _clean(
         {
             "run_date": data_date,
@@ -422,6 +446,7 @@ def run(store, fetcher=yahoo, now: datetime | None = None, cfg=CONFIG, stocks: p
             "models": models,
             "concentration": overlap,
             "rotation": sector_rotation(frames, sectors, cfg) if frames else None,
+            "diffusion": flow,
             "universe_size": len(stocks),
             "skipped": skipped,
             "warnings": warnings,

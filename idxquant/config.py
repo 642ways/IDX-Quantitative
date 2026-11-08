@@ -73,6 +73,17 @@ class Config:
     rotation_weeks: int = 12
     # News
     news_days: int = 7  # Headlines this recent count toward a stock's news tone
+    news_lean: float = 0.3  # A tone this far either way counts as positive or negative, not mixed
+    # Information diffusion
+    diff_leader_share: float = 0.25  # The busiest quarter of a sector leads, at least one stock
+    diff_min_sector: int = 3
+    diff_value_weeks: int = 12  # Busiest by average traded value over this many past weeks
+    diff_move: float = 0.03  # Leaders moving this much in a week counts as news reaching the sector
+    diff_lag_share: float = 0.5  # A follower that moved less than this share of its leaders' move hasn't caught up
+    diff_min_t: float = 2.0
+    diff_candidates: int = 6
+    news_drift_days: int = 10  # Trading days after the news that count as the drift
+    news_drift_min_events: int = 30  # Events needed in each direction before the drift is measured
     # Upcoming events
     event_warn_days: int = 14  # An earnings report this close is flagged before buying
     # Pick filters
