@@ -70,9 +70,42 @@ class Refresher:
             self.start()
 
 
+SUMMARY_VALUATION = ("pe", "pbv", "dividend_yield", "roe")
+
+
+def _pick(parent: dict | None, *path):
+    for key in path:
+        if not isinstance(parent, dict):
+            return None
+        parent = parent.get(key)
+    return parent
+
+
+def stock_summary(page: dict) -> dict:
+    """What the Today page and the screener need from a stock. The rest loads with the stock's own page."""
+    valuation = page.get("valuation") or {}
+    insights = page.get("insights")
+    earnings = _pick(page, "events", "earnings")
+    news = page.get("news")
+    return {
+        "ticker": page.get("ticker"),
+        "name": page.get("name"),
+        "sector": page.get("sector"),
+        "close": page.get("close"),
+        "valuation": {key: valuation.get(key) for key in SUMMARY_VALUATION},
+        "scores": {"composite": _pick(page, "scores", "composite")},
+        "insights": None if insights is None else {"long_odds": None if not insights.get("long_odds") else {"prob": insights["long_odds"].get("prob")}},
+        "events": None if not page.get("events") else {"earnings": None if not earnings else {key: earnings.get(key) for key in ("next", "days", "estimated")}},
+        "news": None if not news else {"tone": news.get("tone"), "count": news.get("count")},
+        "plays": [{"kind": play.get("kind")} for play in page.get("plays") or []],
+    }
+
+
 def today_payload(snapshot: dict | None, warnings: list[str] | None = None, refreshing: bool = False) -> dict:
+    """Today's results with each stock cut to a short summary, which keeps this payload small."""
     snapshot = snapshot or EMPTY
     return {key: snapshot.get(key) for key in EMPTY} | {
+        "stocks": {ticker: stock_summary(page) for ticker, page in (snapshot.get("stocks") or {}).items()},
         "warnings": warnings or snapshot["warnings"],
         "refreshing": refreshing,
     }

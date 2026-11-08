@@ -236,3 +236,45 @@ def test_stock_page_carries_its_price_history(store):
 def test_today_includes_information_diffusion(store):
     store.save_snapshot("2026-10-30", snapshot(diffusion={"candidates": []}))
     assert client_for(store).get("/api/today").json()["diffusion"] == {"candidates": []}
+
+
+def full_page():
+    return {
+        "ticker": "BBCA",
+        "name": "Bank Central Asia",
+        "sector": "Banks",
+        "close": 8000.0,
+        "valuation": {"pe": 20.0, "pbv": 4.0, "dividend_yield": 0.03, "roe": 0.2, "ps": 9.0, "graham_value": 5000.0},
+        "scores": {"composite": 70.0, "value": 40.0},
+        "insights": {"long_odds": {"prob": 0.5, "drivers": [{"feature": "ret_1m"}]}, "similar": {"examples": [1, 2]}},
+        "events": {"earnings": {"next": "2027-01-26", "days": 79, "estimated": False, "last": "2026-10-27"}, "dividend": {"last": {}}},
+        "news": {"tone": 0.4, "count": 12, "items": [{"title": "x"}] * 8},
+        "plays": [{"kind": "long", "monte_carlo": {"chart": {"paths": [1] * 60}}}],
+        "pairs": [{"with": "BBRI"}],
+        "years": [{"year": "2025"}],
+        "diffusion": {"role": "leader", "path": {"weeks": [1] * 13}},
+    }
+
+
+def test_today_carries_short_stock_summaries_and_the_stock_page_the_full_one(store):
+    store.save_snapshot("2026-10-30", snapshot(stocks={"BBCA": full_page()}))
+    summary = client_for(store).get("/api/today").json()["stocks"]["BBCA"]
+    assert summary == {
+        "ticker": "BBCA",
+        "name": "Bank Central Asia",
+        "sector": "Banks",
+        "close": 8000.0,
+        "valuation": {"pe": 20.0, "pbv": 4.0, "dividend_yield": 0.03, "roe": 0.2},
+        "scores": {"composite": 70.0},
+        "insights": {"long_odds": {"prob": 0.5}},
+        "events": {"earnings": {"next": "2027-01-26", "days": 79, "estimated": False}},
+        "news": {"tone": 0.4, "count": 12},
+        "plays": [{"kind": "long"}],
+    }
+    assert client_for(store).get("/api/stock/BBCA").json()["news"]["items"]
+
+
+def test_a_stock_missing_parts_still_gets_a_summary(store):
+    store.save_snapshot("2026-10-30", snapshot())
+    summary = client_for(store).get("/api/today").json()["stocks"]["BBCA"]
+    assert summary["plays"] == [] and summary["news"] is None and summary["insights"] is None

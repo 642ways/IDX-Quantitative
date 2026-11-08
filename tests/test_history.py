@@ -37,3 +37,15 @@ def test_days_after_the_results_date_are_left_out():
 def test_no_prices_give_no_chart():
     assert price_history(pd.DataFrame()) is None
     assert price_history(prices(10), until="2020-01-01") is None
+
+
+def test_volume_comes_with_the_prices():
+    frame = prices(300).assign(volume=np.arange(300, dtype=float) * 1000)
+    found = price_history(frame)
+    assert len(found["volume"]) == CHART_DAYS
+    assert found["volume"][-1] == 299000
+
+
+def test_missing_volume_is_blank():
+    found = price_history(prices(300))
+    assert found["volume"] == [None] * CHART_DAYS
