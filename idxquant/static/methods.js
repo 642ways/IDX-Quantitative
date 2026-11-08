@@ -428,8 +428,8 @@ function methodTopics(cfg) {
         {
           name: "Price chart",
           means: "The stock's daily closing price over the last 3, 6 or 12 months, with today's play drawn on top.",
-          formula: "Price: each day's close\n50-day average: mean of the last 50 closes\n200-day average: mean of the last 200 closes\nShaded band: today's buy zone; dashed lines: target and stop",
-          read: "Price above a rising 200-day average is a long uptrend; below a falling one, a long downtrend. The 50-day average shows the shorter trend. The band and lines show where today's trade sits against the stock's recent range. Hover the chart to read any day's price and averages.",
+          formula: "Price: each day's close\n50-day average: mean of the last 50 closes\n200-day average: mean of the last 200 closes\nShaded band: today's buy zone; dashed lines: target and stop\nVolume: shares traded each day, blue when the price closed up, orange when down\n  the line is the 20-day average volume",
+          read: "Price above a rising 200-day average is a long uptrend; below a falling one, a long downtrend. The 50-day average shows the shorter trend. The band and lines show where today's trade sits against the stock's recent range. A move on volume well above its 20-day average has more traders behind it than one on thin volume. Hover the chart to read any day's figures.",
           caution: "Averages lag: they confirm a trend after it starts, and they whipsaw in a sideways market. Prices aren't adjusted for dividends here, so a large payout shows as a drop on its ex-date. A stock listed less than a year ago has a shorter chart, and its 200-day average starts late.",
         },
         {

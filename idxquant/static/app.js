@@ -997,6 +997,24 @@ function renderStock(stock, today) {
 // ---- Price chart: the last year with its averages, and today's play drawn on top
 
 const PRICE_RANGES = [["3M", 63], ["6M", 126], ["1Y", 252]];
+const VOLUME_AVERAGE_DAYS = 20;
+
+const compactNumber = (value) => {
+  if (missing(value)) return DASH;
+  if (value >= 1e9) return `${(value / 1e9).toFixed(1)}B`;
+  if (value >= 1e6) return `${(value / 1e6).toFixed(1)}M`;
+  if (value >= 1e3) return `${(value / 1e3).toFixed(0)}K`;
+  return String(Math.round(value));
+};
+
+// The average of each value and the ones before it; blank until there are enough
+function rollingMean(values, window) {
+  return values.map((_, i) => {
+    if (i + 1 < window) return null;
+    const recent = values.slice(i + 1 - window, i + 1).filter((value) => !missing(value));
+    return recent.length === window ? recent.reduce((sum, value) => sum + value, 0) / window : null;
+  });
+}
 let priceStock = null;
 let priceDays = 252;
 
@@ -1040,12 +1058,20 @@ function drawPriceChart(holder, stock) {
   const close = pick(full.close);
   const ma50 = pick(full.ma50);
   const ma200 = pick(full.ma200);
+  const fullVolume = full.volume || [];
+  const volume = pick(fullVolume);
+  const volumeAverage = pick(rollingMean(fullVolume, VOLUME_AVERAGE_DAYS));
   const play = stock.plays[0];
   const width = holder.clientWidth;
-  const height = 300;
+  const hasVolume = volume.some((value) => !missing(value) && value > 0);
+  const volumeHeight = hasVolume ? 60 : 0;
+  const height = 300 + (hasVolume ? volumeHeight + 14 : 0);
   const margin = { top: 12, right: play ? 104 : 16, bottom: 28, left: 58 };
   const plotRight = width - margin.right;
-  const plotBottom = height - margin.bottom;
+  // The price takes the top; volume, when Yahoo has it, sits in its own band underneath on the same days
+  const volumeBottom = height - margin.bottom;
+  const volumeTop = volumeBottom - volumeHeight;
+  const plotBottom = hasVolume ? volumeTop - 14 : volumeBottom;
   const levels = play ? [play.entry_low, play.entry_high, play.target, play.stop] : [];
   const values = [...close, ...ma50, ...ma200, ...levels].filter((value) => !missing(value));
   const pad = (Math.max(...values) - Math.min(...values)) * 0.06 || 1;
@@ -1066,9 +1092,28 @@ function drawPriceChart(holder, stock) {
     .map((i) => {
       const day = new Date(`${dates[i]}T00:00:00`);
       const label = day.getMonth() === 0 ? String(day.getFullYear()) : day.toLocaleDateString("en-GB", { month: "short" });
-      return `<text class="axis" x="${x(i)}" y="${plotBottom + 18}" text-anchor="middle">${label}</text>`;
+      return `<text class="axis" x="${x(i)}" y="${volumeBottom + 18}" text-anchor="middle">${label}</text>`;
     })
     .join("");
+  // Bars coloured by whether the price closed up or down that day; the line is the 20-day average volume
+  const most = hasVolume ? Math.max(...volume.filter((value) => !missing(value))) : 1;
+  const barWidth = Math.max(1, ((plotRight - margin.left) / Math.max(close.length, 1)) * 0.7);
+  const volumeY = (value) => volumeBottom - (value / most) * volumeHeight;
+  const previousClose = (i) => (i > 0 ? close[i - 1] : full.close[start - 1]);
+  const volumeBars = hasVolume
+    ? volume
+        .map((value, i) => {
+          if (missing(value) || value <= 0) return "";
+          const rising = missing(previousClose(i)) || close[i] >= previousClose(i);
+          return `<rect class="${rising ? "vol-up" : "vol-down"}" x="${(x(i) - barWidth / 2).toFixed(1)}" y="${volumeY(value).toFixed(1)}"
+            width="${barWidth.toFixed(1)}" height="${(volumeBottom - volumeY(value)).toFixed(1)}"></rect>`;
+        })
+        .join("") +
+      `<path class="vol-average" d="${linePath(volumeAverage, x, volumeY)}"></path>
+       <line class="grid" x1="${margin.left}" x2="${plotRight}" y1="${volumeBottom}" y2="${volumeBottom}"></line>
+       <text class="axis" x="${margin.left - 8}" y="${volumeTop + 8}" text-anchor="end">${compactNumber(most)}</text>
+       <text class="axis" x="${margin.left - 8}" y="${volumeBottom}" text-anchor="end">Vol</text>`
+    : "";
   const level = (name, value, kind) => `<line class="level ${kind}" x1="${margin.left}" x2="${plotRight}" y1="${y(value)}" y2="${y(value)}"></line>
     <text class="levelname" x="${plotRight + 8}" y="${y(value) + 4}">${name} ${price(value)}</text>`;
   const zone = play
@@ -1085,10 +1130,10 @@ function drawPriceChart(holder, stock) {
       <path class="ma200" d="${linePath(ma200, x, y)}"></path>
       <path class="ma50" d="${linePath(ma50, x, y)}"></path>
       <path class="price-line" d="${linePath(close, x, y)}"></path>
-      ${months}
-      <line class="cross" y1="${margin.top}" y2="${plotBottom}" visibility="hidden"></line>
+      ${volumeBars}${months}
+      <line class="cross" y1="${margin.top}" y2="${volumeBottom}" visibility="hidden"></line>
       <circle class="hover-dot" r="3.5" visibility="hidden"></circle>
-      <rect class="hit" x="${margin.left}" y="${margin.top}" width="${Math.max(plotRight - margin.left, 0)}" height="${plotBottom - margin.top}"></rect>
+      <rect class="hit" x="${margin.left}" y="${margin.top}" width="${Math.max(plotRight - margin.left, 0)}" height="${volumeBottom - margin.top}"></rect>
     </svg><div class="tip" hidden></div>`;
 
   const change = last / first - 1;
@@ -1112,7 +1157,8 @@ function drawPriceChart(holder, stock) {
     dot.setAttribute("cy", y(close[i]));
     dot.setAttribute("visibility", "visible");
     tip.hidden = false;
-    tip.innerHTML = `<b>${longDate(dates[i])}</b><br>Price ${price(close[i])}<br>50-day ${price(ma50[i])}<br>200-day ${price(ma200[i])}`;
+    const traded = hasVolume ? `<br>Volume ${compactNumber(volume[i])} shares<br>20-day average ${compactNumber(volumeAverage[i])}` : "";
+    tip.innerHTML = `<b>${longDate(dates[i])}</b><br>Price ${price(close[i])}<br>50-day ${price(ma50[i])}<br>200-day ${price(ma200[i])}${traded}`;
     tip.style.left = `${Math.min(left + 10, Math.max(width - 150, 0))}px`;
   });
   hit.addEventListener("pointerleave", () => {

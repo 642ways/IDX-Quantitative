@@ -23,8 +23,10 @@ def price_history(frame: pd.DataFrame | None, until: str | None = None, days: in
     # Averages are worked out on the full history first, so the chart's first days already have them
     averages = {f"ma{window}": closes.rolling(window).mean() for window in AVERAGES}
     shown = closes.index[-days:]
+    volume = frame["volume"].reindex(shown) if "volume" in frame else pd.Series(index=shown, dtype=float)
     return {
         "dates": [day.strftime("%Y-%m-%d") for day in shown],
         "close": _rounded(closes.loc[shown]),
         **{name: _rounded(series.loc[shown]) for name, series in averages.items()},
+        "volume": [None if pd.isna(value) else int(value) for value in volume],
     }

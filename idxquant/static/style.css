@@ -519,6 +519,9 @@ h3.subhead { font-size: 13px; margin: 4px 16px 0; }
 .mc-chart .ma200 { fill: none; stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 5 3; }
 .mc-chart .zone { fill: var(--accent); opacity: .14; }
 .mc-chart .hover-dot { fill: var(--text); pointer-events: none; }
+.mc-chart .vol-up { fill: var(--path-target); opacity: .45; }
+.mc-chart .vol-down { fill: var(--path-stop); opacity: .45; }
+.mc-chart .vol-average { fill: none; stroke: var(--text); stroke-width: 1.2; opacity: .7; }
 .swatch.s-price { height: 2px; background: var(--text); }
 .swatch.s-ma50 { height: 2px; background: var(--accent); }
 .swatch.s-ma200 { height: 2px; background: repeating-linear-gradient(90deg, var(--muted) 0 5px, transparent 5px 8px); }
