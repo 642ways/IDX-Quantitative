@@ -531,3 +531,14 @@ def test_stock_pages_carry_recent_news_and_its_tone(tmp_path):
 def test_without_a_news_source_pages_have_no_news(tmp_path):
     _, snapshot = execute(tmp_path, FakeFetcher({"AAAA": frame(1)}), ["AAAA"])
     assert snapshot["stocks"]["AAAA"]["news"] is None
+
+
+def test_snapshot_carries_information_diffusion(tmp_path):
+    tickers = ["AAAA", "BBBB", "CCCC", "DDDD", "EEEE", "FFFF"]
+    fetcher = FakeFetcher({t: frame(i) for i, t in enumerate(tickers)})
+    _, snapshot = execute(tmp_path, fetcher, tickers)
+    found = snapshot["diffusion"]
+    assert set(found) == {"check", "candidates", "warnings", "news"}
+    assert found["news"]["status"] == "collecting"
+    roles = {page["diffusion"]["role"] for page in snapshot["stocks"].values() if page["diffusion"]}
+    assert roles <= {"leader", "follower"}

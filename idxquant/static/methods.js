@@ -449,6 +449,41 @@ function methodTopics(cfg) {
       ],
     },
     {
+      id: "diffusion",
+      title: "Information diffusion",
+      intro: "News doesn't reach every investor at once. A sector's busiest stocks tend to react first and its quieter ones later, so the leaders' move can hint at where the followers go next (Hong and Stein 1999, Hou 2007). On the IDX the data shows this for falls but not for rises. It's information beside the picks and doesn't change them.",
+      items: [
+        {
+          name: "Leaders and followers",
+          means: "Which stocks in a sector move first, and which tend to follow.",
+          formula: `Leaders: the busiest ${percent(cfg.diff_leader_share)} of a sector by average weekly traded value\n  over the last ${cfg.diff_value_weeks} weeks, at least one stock\nFollowers: the rest of the sector\nOnly sectors with ${cfg.diff_min_sector} or more stocks`,
+          read: "On a stock page, the chart compares the stock's growth with its leaders' (or, for a leader, its followers') over the last 13 weeks. A follower that keeps lagging its leaders' moves by a week or so fits the pattern.",
+          caution: "Leaders are chosen by trading, not by company size, so a stock in a speculative burst can briefly count as a leader. Sectors are the app's own groups.",
+        },
+        {
+          name: "Missed a fall or a rise",
+          means: "A follower whose sector leaders moved strongly over the last week while it didn't move with them.",
+          formula: `Over the last 5 trading days:\nLeaders moved ${percent(cfg.diff_move)} or more one way\nThe follower moved less than ${percent(cfg.diff_lag_share)} as far that way\nbut not ${percent(cfg.diff_move)} or more the other way, which would be news of its own`,
+          read: "Missed a fall is the one to notice before buying: the leaders fell and this stock hasn't yet, and in past data such stocks tended to follow them down the next week.",
+          caution: "A stock can lag for reasons of its own. Check its news and chart before reading anything into it.",
+        },
+        {
+          name: "Lead-lag test",
+          means: "Whether followers really did follow their leaders, in about ten years of weekly prices.",
+          formula: "Every week, every follower that missed a fall or a rise\nIts next week's return minus the same week's average follower\nAverage per week, then a t-stat across weeks\nCompared with the cost of buying and selling once",
+          read: "First test, November 2026: after leaders fell, followers that hadn't fallen did about 0.3 points worse the next week (t about -2.3), so bad news did spread slowly. After leaders rose, followers that hadn't joined did about 0.25 points worse too (t about -2.0): they kept lagging, with no catch-up. The Results page shows the live figures.",
+          caution: "Both effects are smaller than the 0.4% cost of a round trip, so they're context before buying, not trades. An earlier version that also counted followers falling hard against a rising sector seemed to show a catch-up, but that came from those stocks bouncing after their own sharp falls.",
+        },
+        {
+          name: "News drift",
+          means: "When a stock's news turns positive or negative, how much of the price move happens that day and how much over the days after.",
+          formula: `A news turn: a stock's news tone becomes positive or negative after being neither\nMove against its sector on the day, and over the next ${cfg.news_drift_days} trading days\nMeasured once there are ${cfg.news_drift_min_events} turns each way with ${cfg.news_drift_days} days after them`,
+          read: "If most of the move comes after the news day, prices are absorbing news slowly, and a fresh positive or negative turn is worth noticing early. It's the same idea as the lead-lag test, applied to a stock's own headlines instead of its sector's leaders.",
+          caution: "Google News only reaches back about two weeks, so the test builds up from the news the app saves each day. Until there are enough turns, the Results page says how far along it is.",
+        },
+      ],
+    },
+    {
       id: "picks",
       title: "How picks are chosen",
       intro: "This is how the app goes from the stock list to today's ranked table.",

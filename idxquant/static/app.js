@@ -182,6 +182,139 @@ function finding(today) {
   return `<p class="finding">${split}${quiet}</p>`;
 }
 
+// ---- Information diffusion: a sector's busiest stocks move first, its quieter ones follow
+
+const points1 = (value) => `${value > 0 ? "+" : ""}${(value * 100).toFixed(1)} pts`;
+
+// What the weekly price history says about followers that didn't move with their leaders, from the live test numbers
+function sliceSentence(check, direction) {
+  const slice = check && (direction > 0 ? check.up : check.down);
+  if (!slice || missing(slice.excess)) return "";
+  const t = slice.t_stat;
+  const moved = direction > 0 ? "rose" : "fell";
+  const base = `After a sector's leaders ${moved} ${pct(check.move, 0)} or more, followers that hadn't moved with them did ${points1(slice.excess)} against the average follower the next week (t = ${missing(t) ? DASH : t.toFixed(1)}).`;
+  let meaning = "That could be luck.";
+  if (!missing(t) && Math.abs(t) >= 2) {
+    if (direction < 0) meaning = slice.excess < 0 ? "They tended to catch the fall, as slowly spreading news predicts." : "They tended to hold up rather than catch the fall.";
+    else meaning = slice.excess > 0 ? "They tended to catch up, as slowly spreading news predicts." : "They tended to keep lagging, so there's no catch-up to count on.";
+  }
+  return `${base} ${meaning}`;
+}
+
+function diffusionVerdict(check) {
+  if (!check || !check.up || missing(check.up.excess)) return "Not enough history to test this yet.";
+  const small = [check.up, check.down].every((s) => missing(s.excess) || Math.abs(s.excess) < check.costs);
+  const costs = small ? ` Both are smaller than the ${pct(check.costs)} cost of a round trip, so this is context before buying, not a trade.` : "";
+  return `${sliceSentence(check, -1)} ${sliceSentence(check, 1)}${costs}`;
+}
+
+function catchUpRows(rows) {
+  if (!rows.length) return `<p class="note">None this week.</p>`;
+  return `<ul class="flowlist">${rows
+    .map(
+      (row) => `<li><a class="tk" href="#/stock/${esc(row.ticker)}">${esc(row.ticker)}</a><span class="nm">${esc(row.sector)}</span>
+        <span class="flowmove">Leaders ${signedPct(row.leaders_ret)}, this stock ${signedPct(row.own_ret)}</span></li>`,
+    )
+    .join("")}</ul>`;
+}
+
+function catchUpPanel(flow) {
+  if (!flow || (!flow.candidates.length && !flow.warnings.length && !flow.check)) return "";
+  const move = flow.check ? pct(flow.check.move, 0) : "3%";
+  return `<section class="panel catchup"><h2>Sector leaders and laggards${topicHelp("diffusion", "information diffusion")}</h2>
+      <p class="note chartnote">Sectors whose busiest stocks moved ${move} or more over the last 5 trading days, and the quieter stocks that haven't moved with them yet.</p>
+      <div class="flowgrid">
+        <div><h3>Missed a fall: leaders fell, these haven't yet</h3>${catchUpRows(flow.warnings)}</div>
+        <div><h3>Missed a rise: leaders rose, these didn't follow</h3>${catchUpRows(flow.candidates)}</div>
+      </div>
+      <p class="note">${diffusionVerdict(flow.check)}</p>
+    </section>`;
+}
+
+function leadersPanel(stock, today) {
+  const flow = stock.diffusion;
+  const check = today && today.diffusion && today.diffusion.check;
+  if (!flow) return "";
+  const link = (t) => (t === stock.ticker ? esc(t) : `<a href="#/stock/${esc(t)}">${esc(t)}</a>`);
+  const names = flow.leaders.map(link).join(", ");
+  const role =
+    flow.role === "leader"
+      ? `${esc(stock.ticker)} is one of the ${esc(flow.sector)} sector's leaders${flow.leaders.length > 1 ? `, with ${flow.leaders.filter((t) => t !== stock.ticker).map(link).join(", ")}` : ""}. Its quieter peers have tended to follow its moves.`
+      : `${esc(stock.ticker)} is a follower in the ${esc(flow.sector)} sector. Its leaders are ${names}.`;
+  const missedFall = flow.status === "missed a fall";
+  const status = flow.status
+    ? `<p class="flowstatus"><span class="tag">${missedFall ? "Missed a fall" : "Missed a rise"}</span>
+        Leaders ${signedPct(flow.leaders_ret)} over the last 5 trading days, ${esc(stock.ticker)} ${signedPct(flow.own_ret)}.
+        ${sliceSentence(check, missedFall ? -1 : 1)}</p>`
+    : flow.role === "follower" && !missing(flow.leaders_ret)
+      ? `<p class="note">Last 5 trading days: leaders ${signedPct(flow.leaders_ret)}, ${esc(stock.ticker)} ${signedPct(flow.own_ret)}.</p>`
+      : "";
+  const key = (name, kind) => `<span class="key"><i class="swatch ${kind}"></i>${name}</span>`;
+  return `<section class="panel full"><h2>Leaders and followers${help("Leaders and followers")}</h2>
+      <p class="note chartnote">${role}</p>${status}
+      <div class="legend">${key(esc(stock.ticker), "s-price")}${key(esc(flow.path.group_label), "s-ma50")}</div>
+      <div class="mc-chart flow-chart"></div>
+      <p class="note">Growth over the last ${flow.path.weeks.length} weeks. Leaders are the busiest quarter of the sector by traded value.</p>
+    </section>`;
+}
+
+function drawFlowChart(holder, flow) {
+  const { weeks, stock: own, group } = flow.path;
+  const width = holder.clientWidth;
+  const height = 200;
+  const margin = { top: 10, right: 16, bottom: 26, left: 52 };
+  const plotRight = width - margin.right;
+  const plotBottom = height - margin.bottom;
+  const values = [0, ...own, ...group];
+  const pad = (Math.max(...values) - Math.min(...values)) * 0.08 || 0.01;
+  const low = Math.min(...values) - pad;
+  const high = Math.max(...values) + pad;
+  const x = (i) => margin.left + (i / Math.max(weeks.length - 1, 1)) * (plotRight - margin.left);
+  const y = (value) => margin.top + ((high - value) / (high - low)) * (plotBottom - margin.top);
+  const grid = niceTicks(low, high, 4)
+    .map((tick) => `<line class="grid${Math.abs(tick) < 1e-9 ? " base" : ""}" x1="${margin.left}" x2="${plotRight}" y1="${y(tick)}" y2="${y(tick)}"></line>
+      <text class="axis" x="${margin.left - 8}" y="${y(tick) + 4}" text-anchor="end">${pct(tick, 0)}</text>`)
+    .join("");
+  const labels = weeks
+    .map((week, i) => (i % 4 === 0 || i === weeks.length - 1 ? `<text class="axis" x="${x(i)}" y="${plotBottom + 18}" text-anchor="middle">${shortDate(week)}</text>` : ""))
+    .join("");
+  holder.innerHTML = `<svg width="${width}" height="${height}" role="img" aria-label="Growth of this stock against its ${esc(flow.path.group_label.toLowerCase())} over ${weeks.length} weeks">
+      ${grid}<path class="ma50" d="${linePath(group, x, y)}"></path><path class="price-line" d="${linePath(own, x, y)}"></path>${labels}
+    </svg>`;
+}
+
+function diffusionCheckPanel(flow) {
+  if (!flow) return "";
+  const check = flow.check;
+  const row = (label, slice) =>
+    !slice || missing(slice.excess)
+      ? `<tr><td>${label}</td><td colspan="4">Not enough cases</td></tr>`
+      : `<tr><td>${label}</td><td class="n">${slice.rows.toLocaleString("en-US")}</td><td class="n">${slice.weeks}</td>
+          <td class="n">${points1(slice.excess)}</td><td class="n">${missing(slice.t_stat) ? DASH : slice.t_stat.toFixed(1)}</td></tr>`;
+  const table = check
+    ? `<table><thead><tr><th>After a sector's leaders moved ${pct(check.move, 0)} or more</th><th class="n">Cases</th><th class="n">Weeks</th>
+        <th class="n">Next week vs average follower</th><th class="n">t-stat</th></tr></thead>
+        <tbody>${row("Leaders fell, follower hadn't yet", check.down)}${row("Leaders rose, follower didn't follow", check.up)}</tbody></table>
+        <p class="note pad">${diffusionVerdict(check)} Tested ${check.years[0]} to ${check.years[1]}. The comparison is with the same week's average follower, so a market-wide move doesn't count.</p>`
+    : `<p class="note pad">Not enough history to test the lead-lag pattern yet.</p>`;
+  const drift = flow.news;
+  const driftText = !drift
+    ? ""
+    : drift.status === "collecting"
+      ? `Collecting: ${drift.days} ${drift.days === 1 ? "day" : "days"} of saved news so far, with ${drift.events.positive} turns to positive and ${drift.events.negative} to negative.
+          The test needs ${drift.needed} of each with ${drift.horizon} trading days after them, which takes a few months of daily runs.`
+      : ["positive", "negative"]
+          .map((name) => {
+            const r = drift[name];
+            const share = missing(r.share_after) ? "" : `, ${pct(r.share_after, 0)} of it after the news day`;
+            return `When news turned ${name} (${r.events} times), the stock moved ${points1(r.day0)} against its sector that day and ${points1(r.after)} over the next ${drift.horizon} trading days${share}.`;
+          })
+          .join(" ");
+  return `<section class="panel flat full"><h2>Information diffusion, tested${topicHelp("diffusion", "information diffusion")}</h2>${table}
+      <h3 class="subhead">News drift${help("News drift")}</h3><p class="note pad">${driftText}</p>
+    </section>`;
+}
+
 // Read before the table: buying several picks that move together is close to one large bet
 function overlapWarning(overlap) {
   if (!overlap || !overlap.warnings.length) return "";
@@ -258,6 +391,7 @@ function renderToday(today) {
     ${marketPanel(today.regime, today.market_type)}
     ${overlapWarning(today.concentration)}
     <div class="filters">${buttons}</div>${body}
+    ${catchUpPanel(today.diffusion)}
     ${overlapPanel(today.concentration)}`;
 
   app.querySelectorAll("[data-filter]").forEach((button) => {
@@ -536,6 +670,8 @@ function drawCharts() {
   if (equity && equityData) drawEquityChart(equity, equityData);
   const prices = app.querySelector(".price-chart");
   if (prices && priceStock) drawPriceChart(prices, priceStock);
+  const flow = app.querySelector(".flow-chart");
+  if (flow && priceStock && priceStock.diffusion) drawFlowChart(flow, priceStock.diffusion);
 }
 
 // Grey label above its figure; the answer figure is drawn larger than its siblings
@@ -833,6 +969,7 @@ function renderStock(stock, today) {
         ${performance(stock.plays.map((p) => p.kind), today.backtest)}</section>` : ""}
       ${eventsPanel(stock)}
       ${newsPanel(stock)}
+      ${leadersPanel(stock, today)}
       ${modelsPanel(stock)}
       <section class="panel${yearly ? "" : " full"} factors"><h2>Factor scores${topicHelp("factors", "factor scores")}</h2>
         ${bar("Combined score", stock.scores.composite)}
@@ -1573,6 +1710,7 @@ function renderResults(results) {
       ${marketTypePanels(results.market_type, backtest.market_types)}
       ${calibrationPanel(backtest.calibration)}
       ${modelCheckPanel(results.models)}
+      ${diffusionCheckPanel(results.diffusion)}
       <section class="panel flat full"><h2>Track record of real picks</h2>${recordSummary(results.track_record)}${record}</section>
     </div>${skipped}`;
   app.querySelector("[data-view-all]")?.addEventListener("click", () => {

@@ -287,6 +287,16 @@ Two checks that don't change the picks but can change how you buy them.
 - **Price chart:** each stock page opens with its daily price over the last 3, 6 or 12 months, the 50-day and 200-day averages, and today's play drawn on top (buy zone, target and stop). The history is built from the saved prices whenever a stock page is served or exported, so the daily results and the Today page stay small.
 - **Stocks page and sector rotation:** a screener of every stock analysed that day, with search, a sector filter, quick filters and sortable columns, under a heatmap of each sector's average weekly return over the last 12 weeks.
 
+### Information diffusion
+
+News doesn't reach every investor at once: a sector's busiest stocks tend to react first and its quieter ones later (Hong and Stein 1999, Hou 2007). Two tests of this sit beside the picks without changing them.
+
+- **Leaders and followers:** in each sector of 3 or more stocks, the busiest quarter by average weekly traded value over the last 12 weeks leads (at least one stock), measured from past weeks only. The rest follow.
+- **Missed a fall or a rise:** a follower whose leaders moved 3% or more over the last 5 trading days while it moved less than half as far that way, and not 3% or more the other way (that would be news of its own). The Today page lists both kinds, and each stock page shows its role, its status and a 13-week chart against its leaders.
+- **Lead-lag test, November 2026, 509 weeks from 2016:** each such follower's next-week return was compared with the same week's average follower. After leaders fell, followers that hadn't fallen did 0.30 points worse (t = -2.3): bad news spread slowly. After leaders rose, followers that hadn't joined did 0.25 points worse too (t = -2.0): they kept lagging, with no catch-up. Both are smaller than the 0.4% round-trip cost, so they're context, not trades.
+- **A lesson from the first version:** it also counted followers that fell hard while their sector rose, and seemed to show a catch-up of 0.44 points. That came from those stocks bouncing after their own sharp falls, which is short-term reversal, not diffusion.
+- **News drift:** when a stock's news tone turns positive or negative, the test measures its move against its sector on that day and over the next 10 trading days. If most of the move comes after the news day, prices are absorbing news slowly. Google News only reaches back about two weeks, so this builds up from the news the app saves each day, and the Results page shows how far along it is until there are 30 turns each way.
+
 ### Backtest
 
 Short-term, pair and momentum signals are tested on up to 10 years of prices. Decisions use only earlier data, trades enter at the next day's open, and fees are included. Backtests re-run every 30 days.

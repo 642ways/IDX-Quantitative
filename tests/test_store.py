@@ -50,3 +50,13 @@ def test_latest_snapshot_is_newest_run_date(tmp_path):
 
 def test_no_snapshot_is_none(tmp_path):
     assert Store(tmp_path / "db.sqlite").latest_snapshot() is None
+
+
+def test_news_history_keeps_only_each_days_tones(tmp_path):
+    store = Store(tmp_path / "db.sqlite")
+    store.save_snapshot("2026-11-05", {"data_date": "2026-11-05", "stocks": {"AAAA": {"news": {"tone": 0.5, "count": 4, "items": []}}, "BBBB": {"news": None}}})
+    store.save_snapshot("2026-11-06", {"data_date": "2026-11-06", "stocks": {"AAAA": {"news": {"tone": -0.4, "count": 2, "items": []}}}})
+    assert store.news_history() == [
+        {"data_date": "2026-11-05", "stocks": {"AAAA": {"news": {"tone": 0.5, "count": 4}}}},
+        {"data_date": "2026-11-06", "stocks": {"AAAA": {"news": {"tone": -0.4, "count": 2}}}},
+    ]
