@@ -338,7 +338,7 @@ Instead of a server that's always on, GitHub Actions can refresh the data once a
 
 ```mermaid
 flowchart LR
-    A["GitHub Actions, weekdays 18:00 WIB"] --> B["Restore the database from the data branch"]
+    A["GitHub Actions, weekdays 18:23, 19:53 and 22:37 WIB"] --> B["Restore the database from the data branch"]
     B --> C["Refresh and export the pages as JSON"]
     C --> D["Save the database to the data branch"]
     C --> E["Push the website to the site branch"]
@@ -356,7 +356,9 @@ flowchart LR
 3. Open **Actions > Daily refresh > Run workflow** to start the first run by hand. It takes several minutes, because it builds the backtests from scratch.
 4. Check the **Check Yahoo can be reached** step. If it fails, Yahoo is blocking GitHub's servers and this setup won't work as it is.
 
-After that, it runs every weekday at 18:00 WIB. GitHub sometimes starts scheduled runs late. A failed refresh still publishes the last good result and marks the run as failed, so you'll get GitHub's failure email.
+After that, it runs by itself every weekday evening. GitHub starts scheduled runs late when it's busy, worst on the hour: in November 2026 a run set for 18:00 WIB started 7 to 10 hours late. So the workflow tries three times, at 18:23, 19:53 and 22:37 WIB. The first run that finds the day's final data refreshes and publishes; the others see it's already done, stop within seconds and publish nothing. A run you start by hand always refreshes.
+
+A failed refresh still publishes the last good result and marks the run as failed, so you'll get GitHub's failure email.
 
 ### Set up Vercel
 

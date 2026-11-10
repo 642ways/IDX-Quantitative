@@ -1,8 +1,14 @@
 name: Daily refresh
 
 on:
+  # GitHub starts scheduled runs late when it's busy, worst on the hour, when most schedules fire: in
+  # November 2026 a run set for 11:00 UTC started 7 to 10 hours late. So there are three tries each
+  # weekday evening at odd minutes. The first that finds today's final data does the refresh, and the
+  # rest see it's already done and stop in seconds.
   schedule:
-    - cron: "0 11 * * 1-5" # 18:00 WIB on weekdays. GitHub can start scheduled runs late.
+    - cron: "23 11 * * 1-5" # 18:23 WIB
+    - cron: "53 12 * * 1-5" # 19:53 WIB
+    - cron: "37 15 * * 1-5" # 22:37 WIB
   workflow_dispatch:
 
 permissions:
@@ -33,6 +39,7 @@ jobs:
         run: python -m idxquant.check
 
       - name: Restore the database
+        id: restore
         run: |
           mkdir -p data
           if git fetch --depth 1 origin data; then
@@ -40,13 +47,27 @@ jobs:
           else
             echo "No saved database yet, so this run starts fresh."
           fi
+          echo "hash=$(sha256sum data/idxquant.sqlite 2>/dev/null | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
 
+      # A run you start by hand always refreshes. A scheduled one skips if today's final data is already saved.
       - name: Refresh and build the site
         id: refresh
         continue-on-error: true
-        run: python -m idxquant.daily --data data/idxquant.sqlite --out site
+        run: python -m idxquant.daily --data data/idxquant.sqlite --out site ${{ github.event_name == 'schedule' && '--if-due' || '' }}
+
+      - name: Check whether anything changed
+        id: changes
+        run: |
+          after=$(sha256sum data/idxquant.sqlite 2>/dev/null | cut -d' ' -f1)
+          if [ "$after" = "${{ steps.restore.outputs.hash }}" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Nothing new, so the site and database stay as they are."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Save the database
+        if: steps.changes.outputs.changed == 'true'
         run: |
           mkdir -p saved
           cp data/idxquant.sqlite saved/
@@ -54,6 +75,7 @@ jobs:
           bash scripts/publish-branch.sh data saved
 
       - name: Publish the site
+        if: steps.changes.outputs.changed == 'true'
         run: bash scripts/publish-branch.sh site site
 
       - name: Report a failed refresh
