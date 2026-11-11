@@ -379,7 +379,7 @@ function renderToday(today) {
     : "No data yet. Press Refresh to fetch it.";
   const quiet = today.picks.length ? "No picks of this type today." : "No stock qualifies today. A quiet day is a valid result.";
   const body = picks.length
-    ? `<div class="tablewrap"><table>
+    ? `<div class="tablewrap picks"><table>
         <thead><tr><th class="n">#</th><th>Stock</th><th>Play</th><th>Stop, buy zone, target</th>
         <th class="n">Chance of target${help(ENDINGS, "chance of target")}</th><th>Why today</th></tr></thead>
         <tbody>${pickRows(picks)}</tbody></table></div>`

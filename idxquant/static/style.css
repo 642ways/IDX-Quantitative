@@ -128,8 +128,13 @@ tr:last-child td { border-bottom: none; }
 th.n, td.n { text-align: right; white-space: nowrap; }
 tbody tr[data-href] { cursor: pointer; }
 tbody tr[data-href]:hover { background: var(--accent-soft); }
-.tablewrap td:nth-child(2) { min-width: 170px; }
-.tablewrap td:last-child { min-width: 240px; }
+/* Today's picks: room for the stock name and the reason */
+.tablewrap.picks td:nth-child(2) { min-width: 170px; }
+.tablewrap.picks td:last-child { min-width: 240px; }
+/* Screener: ten columns have to fit, so cells are a little tighter and the stock name gets the room */
+.screener th, .screener td { padding: 8px 10px; }
+.screener td:first-child { min-width: 170px; }
+.screener th { white-space: nowrap; }
 .tk { font-weight: 700; }
 .nm { display: block; color: var(--muted); font-size: 12px; }
 
@@ -532,6 +537,14 @@ footer { max-width: 1120px; margin: 0 auto; padding: 8px 24px 32px; color: var(-
 
 @media (max-width: 960px) {
   .tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  /* The screener scrolls sideways from here down, so its stock name stays pinned on the left */
+  .screener th:first-child, .screener td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--surface);
+    box-shadow: 1px 0 0 var(--line);
+  }
 }
 
 @media (max-width: 720px) {
@@ -547,10 +560,11 @@ footer { max-width: 1120px; margin: 0 auto; padding: 8px 24px 32px; color: var(-
   .flowgrid { grid-template-columns: minmax(0, 1fr); }
 }
 
-/* Phone: drop the rank column and pin the stock name, so a sideways scroll never loses the row */
+/* Phone: pin the stock name, so a sideways scroll never loses the row. Today's picks also drop the rank column. */
 @media (max-width: 640px) {
-  .tablewrap th:first-child, .tablewrap td:first-child { display: none; }
-  .tablewrap th:nth-child(2), .tablewrap td:nth-child(2) {
+  .tablewrap.picks th:first-child, .tablewrap.picks td:first-child { display: none; }
+  .tablewrap.picks th:nth-child(2), .tablewrap.picks td:nth-child(2),
+  .screener th:first-child, .screener td:first-child {
     position: sticky;
     left: 0;
     z-index: 1;
@@ -558,5 +572,5 @@ footer { max-width: 1120px; margin: 0 auto; padding: 8px 24px 32px; color: var(-
     background: var(--surface);
     box-shadow: 1px 0 0 var(--line);
   }
-  .tablewrap td:last-child { min-width: 200px; }
+  .tablewrap.picks td:last-child { min-width: 200px; }
 }
