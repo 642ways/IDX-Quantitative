@@ -360,6 +360,20 @@ After that, it runs by itself every weekday evening. GitHub starts scheduled run
 
 A failed refresh still publishes the last good result and marks the run as failed, so you'll get GitHub's failure email.
 
+### Start it on time with a Cloudflare Worker
+
+A run started through GitHub's API begins within seconds, while scheduled runs can wait for hours. The free Cloudflare Worker in `scheduler/` calls that API at exactly 18:20 WIB on weekdays. The GitHub schedule stays as a backup, and whichever run comes second sees the data is done and stops.
+
+1. **GitHub token:** on GitHub, open **Settings > Developer settings > Personal access tokens > Fine-grained tokens > Generate new token**. Give it a name and an expiry date, choose **Only select repositories** and pick this repository, then under **Repository permissions** set **Actions** to **Read and write**. Copy the token.
+2. **Worker:** in Cloudflare, open **Workers & Pages > Create application**, start from **Hello World**, name it `idx-quant-cron` and deploy. Open **Edit code**, replace everything with `scheduler/worker.js`, and deploy again.
+3. **Secret:** in the Worker's **Settings > Variables and Secrets**, add a **Secret** named `GITHUB_TOKEN` with the token as its value.
+4. **Schedule:** in **Settings > Trigger events**, add a **Cron trigger** with `20 11 * * 1-5`. Cloudflare uses UTC, so that's 18:20 WIB on weekdays.
+5. **Test (optional):** add another secret, `RUN_KEY`, with any long random text, then open `https://idx-quant-cron.<your-subdomain>.workers.dev/?key=<that text>`. It should say "GitHub answered 204", and a new run appears under **Actions** within a few seconds.
+
+To deploy from the command line instead, run `npx wrangler deploy` in `scheduler/`, then `npx wrangler secret put GITHUB_TOKEN`.
+
+When the token expires, make a new one and replace the `GITHUB_TOKEN` secret. Until then, the GitHub schedule keeps working as before.
+
 ### Set up Vercel
 
 1. In Vercel, choose **Add New > Project** and import this repository.

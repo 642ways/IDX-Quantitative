@@ -1,0 +1,9 @@
+# Only needed to deploy from the command line with `npx wrangler deploy` in this folder.
+# Setting it up in the Cloudflare dashboard instead works the same; see the README.
+name = "idx-quant-cron"
+main = "worker.js"
+compatibility_date = "2026-10-01"
+
+[triggers]
+# Cloudflare cron times are in UTC: 11:20 UTC is 18:20 WIB, Monday to Friday
+crons = ["20 11 * * 1-5"]
