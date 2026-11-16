@@ -9,7 +9,15 @@ on:
     - cron: "23 11 * * 1-5" # 18:23 WIB
     - cron: "53 12 * * 1-5" # 19:53 WIB
     - cron: "37 15 * * 1-5" # 22:37 WIB
+  # The Cloudflare Worker in scheduler/ starts a run through GitHub's API as soon as the day's prices are
+  # final, usually about 16:25 WIB, with if_due set so it behaves like the scheduled tries. Starting a run
+  # by hand leaves it off and always refreshes.
   workflow_dispatch:
+    inputs:
+      if_due:
+        description: "Skip the refresh if today's final data is already saved"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -49,11 +57,12 @@ jobs:
           fi
           echo "hash=$(sha256sum data/idxquant.sqlite 2>/dev/null | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
 
-      # A run you start by hand always refreshes. A scheduled one skips if today's final data is already saved.
+      # A run you start by hand always refreshes. A scheduled one, or one the Cloudflare Worker starts,
+      # skips if today's final data is already saved.
       - name: Refresh and build the site
         id: refresh
         continue-on-error: true
-        run: python -m idxquant.daily --data data/idxquant.sqlite --out site ${{ github.event_name == 'schedule' && '--if-due' || '' }}
+        run: python -m idxquant.daily --data data/idxquant.sqlite --out site ${{ (github.event_name == 'schedule' || inputs.if_due) && '--if-due' || '' }}
 
       - name: Check whether anything changed
         id: changes
