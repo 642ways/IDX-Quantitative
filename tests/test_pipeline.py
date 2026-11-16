@@ -542,3 +542,21 @@ def test_snapshot_carries_information_diffusion(tmp_path):
     assert found["news"]["status"] == "collecting"
     roles = {page["diffusion"]["role"] for page in snapshot["stocks"].values() if page["diffusion"]}
     assert roles <= {"leader", "follower"}
+
+
+def test_todays_bar_counts_as_final_from_1620_wib():
+    """IDX's closing auction ends at 16:00 and post-trading at 16:15, so the close is settled by 16:20."""
+    assert drop_partial_bar(frame(1), FRIDAY_EVENING.replace(hour=16, minute=19)).index[-1] == pd.Timestamp("2026-10-29")
+    assert drop_partial_bar(frame(1), FRIDAY_EVENING.replace(hour=16, minute=20)).index[-1] == pd.Timestamp("2026-10-30")
+
+
+def test_refresh_is_due_from_1620_wib():
+    thursday_evening = FRIDAY_EVENING - timedelta(days=1)
+    assert not needs_refresh(FRIDAY_EVENING.replace(hour=16, minute=10), snapshot_at(thursday_evening))
+    assert needs_refresh(FRIDAY_EVENING.replace(hour=16, minute=25), snapshot_at(thursday_evening))
+
+
+def test_yahoo_lag_retries_start_at_1620_wib():
+    tuesday = datetime(2026, 11, 3, 16, 40, tzinfo=WIB)
+    ran = {"ran_at": tuesday.replace(minute=25).isoformat(), "data_date": "2026-11-02"}
+    assert needs_refresh(tuesday, ran)

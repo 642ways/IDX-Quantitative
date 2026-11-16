@@ -91,8 +91,10 @@ class Config:
     min_up_other: float = 0.03
     min_stop_price: int = 50
     max_rows: int = 15
-    # Data counts as final from this hour, Jakarta time
-    final_hour_wib: int = 17
+    # Data counts as final from this time, Jakarta time. IDX's closing auction ends at 16:00 and
+    # post-trading, at the closing price only, at 16:15, so the day's close is settled by 16:20.
+    final_hour_wib: int = 16
+    final_minute_wib: int = 20
     # Keep retrying until this hour if Yahoo hasn't published the day's data yet
     retry_until_hour_wib: int = 20
     # A refresh missing more than this share of stocks counts as failed

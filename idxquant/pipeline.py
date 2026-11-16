@@ -22,16 +22,21 @@ INDEX_TICKER = "^JKSE"
 MEDIAN_FIELDS = ("pe", "pbv", "ps", "ev_ebitda", "earnings_yield", "fcf_yield", "dividend_yield", "gross_margin", "operating_margin", "net_margin", "roe", "roa")
 
 
+def _final_moment(now: datetime, cfg=CONFIG) -> datetime:
+    """The time on `now`'s day from which that day's prices count as final."""
+    return now.replace(hour=cfg.final_hour_wib, minute=cfg.final_minute_wib, second=0, microsecond=0)
+
+
 def drop_partial_bar(frame: pd.DataFrame, now: datetime, cfg=CONFIG) -> pd.DataFrame:
     """Today's bar still changes until the data counts as final."""
-    if frame.empty or now.hour >= cfg.final_hour_wib:
+    if frame.empty or now >= _final_moment(now, cfg):
         return frame
     return frame[frame.index.date < now.date()]
 
 
 def latest_cutoff(now: datetime, cfg=CONFIG) -> datetime:
     """The most recent weekday moment at which a day's data became final."""
-    moment = now.replace(hour=cfg.final_hour_wib, minute=0, second=0, microsecond=0)
+    moment = _final_moment(now, cfg)
     if moment > now:
         moment -= timedelta(days=1)
     while moment.weekday() >= 5:
@@ -45,7 +50,7 @@ def needs_refresh(now: datetime, snapshot: dict | None, cfg=CONFIG) -> bool:
     if datetime.fromisoformat(snapshot["ran_at"]) < latest_cutoff(now, cfg):
         return True
     # Yahoo can lag past the close. Holidays look the same, so retries stop for the evening.
-    in_retry_window = now.weekday() < 5 and cfg.final_hour_wib <= now.hour < cfg.retry_until_hour_wib
+    in_retry_window = now.weekday() < 5 and _final_moment(now, cfg) <= now and now.hour < cfg.retry_until_hour_wib
     data_date = snapshot.get("data_date")
     return in_retry_window and data_date is not None and data_date < now.date().isoformat()
 

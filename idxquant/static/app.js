@@ -56,7 +56,7 @@ function showStatus(today) {
   banner.textContent = today.warnings.join(" ");
   if (STATIC_SITE) {
     refreshButton.hidden = true;
-    if (today.data_date) dataDate.textContent += ". Updates on weekdays after 18:00 WIB";
+    if (today.data_date) dataDate.textContent += ". Updates on weekdays from about 16:30 WIB";
     return;
   }
   refreshButton.disabled = today.refreshing;
