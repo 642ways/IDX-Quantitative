@@ -1,0 +1,576 @@
+:root {
+  --bg: #f7f7f5;
+  --surface: #ffffff;
+  --text: #1c1e21;
+  --muted: #62676e;
+  --line: #e2e3e0;
+  --accent: #1f5fae;
+  --accent-soft: #e4edf8;
+  --chip: #eeeeec;
+  --good: #1c7c48;
+  --bad: #b3362f;
+  --warn-bg: #fdf3d9;
+  --warn-text: #6e5205;
+  --path-target: #2a78d6;
+  --path-stop: #eb6834;
+  --mt-rally: #2a78d6;
+  --mt-quiet: #bbbbbb;
+  --mt-weakening: #eda100;
+  --mt-panic: #c9402f;
+  --mt-rebound: #1baf7a;
+}
+
+/* Dark follows the device unless the reader picked light; the Dark button sets it outright */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15171a;
+    --surface: #1d2024;
+    --text: #e8e9ea;
+    --muted: #9ba1a8;
+    --line: #30343a;
+    --accent: #7fb2ee;
+    --accent-soft: #233349;
+    --chip: #2a2e33;
+    --good: #5cc48b;
+    --bad: #ec8078;
+    --warn-bg: #3a2f12;
+    --warn-text: #efd68c;
+    --path-target: #3d87de;
+    --path-stop: #d9622f;
+    --mt-rally: #3d87de;
+    --mt-quiet: #505050;
+    --mt-weakening: #b58a12;
+    --mt-panic: #d84a4a;
+    --mt-rebound: #22a87c;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15171a;
+  --surface: #1d2024;
+  --text: #e8e9ea;
+  --muted: #9ba1a8;
+  --line: #30343a;
+  --accent: #7fb2ee;
+  --accent-soft: #233349;
+  --chip: #2a2e33;
+  --good: #5cc48b;
+  --bad: #ec8078;
+  --warn-bg: #3a2f12;
+  --warn-text: #efd68c;
+  --path-target: #3d87de;
+  --path-stop: #d9622f;
+  --mt-rally: #3d87de;
+  --mt-quiet: #505050;
+  --mt-weakening: #b58a12;
+  --mt-panic: #d84a4a;
+  --mt-rebound: #22a87c;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.5 "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 12px 24px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+
+.brand { font-weight: 700; font-size: 16px; color: var(--text); }
+nav { display: flex; gap: 16px; }
+nav a { color: var(--muted); }
+nav a.active { color: var(--text); font-weight: 600; }
+.status { margin-left: auto; display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 13px; }
+
+button {
+  font: inherit;
+  padding: 5px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+button:hover:not(:disabled) { border-color: var(--accent); }
+button:disabled { opacity: .6; cursor: default; }
+button[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+
+.banner { padding: 8px 24px; background: var(--warn-bg); color: var(--warn-text); font-size: 13px; }
+
+main { max-width: 1120px; margin: 0 auto; padding: 24px; }
+h1 { font-size: 22px; margin: 0 0 4px; line-height: 1.3; }
+h2 { font-size: 14px; margin: 0 0 10px; }
+.sub { color: var(--muted); margin: 0 0 16px; }
+
+.filters { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+
+.tablewrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; font-size: 12px; font-weight: 400; color: var(--muted); padding: 8px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+th.n, td.n { text-align: right; white-space: nowrap; }
+tbody tr[data-href] { cursor: pointer; }
+tbody tr[data-href]:hover { background: var(--accent-soft); }
+/* Today's picks: room for the stock name and the reason */
+.tablewrap.picks td:nth-child(2) { min-width: 170px; }
+.tablewrap.picks td:last-child { min-width: 240px; }
+/* Screener: ten columns have to fit, so cells are a little tighter and the stock name gets the room */
+.screener th, .screener td { padding: 8px 10px; }
+.screener td:first-child { min-width: 170px; }
+.screener th { white-space: nowrap; }
+.tk { font-weight: 700; }
+.nm { display: block; color: var(--muted); font-size: 12px; }
+
+.tag { display: inline-block; flex: none; padding: 1px 8px; border-radius: 10px; background: var(--chip); color: var(--text); font-size: 12px; font-weight: 500; white-space: nowrap; }
+
+.up { color: var(--good); }
+.down { color: var(--bad); }
+
+.empty { padding: 32px; text-align: center; color: var(--muted); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+
+.head { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
+.price { font-size: 18px; font-weight: 600; }
+
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; min-width: 0; }
+.panel.flat { padding: 0; overflow-x: auto; }
+.panel.flat h2 { padding: 16px 16px 0; }
+.panel.full { grid-column: 1 / -1; }
+
+ol.steps { margin: 8px 0 0; padding-left: 20px; }
+ol.steps li { margin-bottom: 2px; }
+.note { color: var(--muted); font-size: 13px; margin: 8px 0 0; }
+.play + .play { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); }
+
+.metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.metric span { display: block; color: var(--muted); font-size: 12px; }
+.metric b { display: block; font-size: 18px; font-weight: 500; }
+.metric.answer b { font-size: 24px; }
+
+.bar { display: grid; grid-template-columns: 96px 1fr 32px; gap: 10px; align-items: center; margin: 6px 0; }
+.factors .bar { max-width: 640px; grid-template-columns: 140px 1fr 32px; }
+.track { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; }
+.fill { height: 100%; background: var(--accent); }
+
+.odds { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.odds h3 { font-size: 13px; margin: 0 0 8px; }
+.oddsbar { display: flex; gap: 2px; height: 10px; margin-bottom: 10px; border-radius: 4px; overflow: hidden; }
+.oddsbar span { display: block; min-width: 0; }
+.o-target { background: var(--path-target); }
+.o-neither { background: var(--line); }
+.o-stop { background: var(--path-stop); }
+
+.help {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  margin-left: 5px;
+  padding: 0;
+  border: 1px solid var(--muted);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  vertical-align: 1px;
+  cursor: help;
+}
+.help:hover:not(:disabled), .help:focus-visible { border-color: var(--accent); color: var(--accent); }
+.helpbox {
+  position: fixed;
+  z-index: 20;
+  width: min(360px, calc(100vw - 16px));
+  max-height: min(70vh, 460px);
+  overflow-y: auto;
+  padding: 12px 14px;
+  background: var(--surface);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, .22), 0 0 0 1px rgba(0, 0, 0, .04);
+  font-size: 13px;
+  font-weight: 400;
+  text-align: left;
+}
+.helpbox h4 { margin: 0 0 4px; font-size: 13px; }
+.helpbox p { margin: 0 0 8px; }
+.helpbox pre {
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  background: var(--bg);
+  border-radius: 6px;
+  font: 12px/1.5 ui-monospace, "Cascadia Mono", Consolas, monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+.tabs a { padding: 5px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--text); }
+.tabs a:hover { border-color: var(--accent); text-decoration: none; }
+.tabs a.current { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.topic { font-size: 18px; margin-bottom: 4px; }
+.stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; min-width: 0; }
+.stat h2 { margin-bottom: 4px; }
+.stat p { margin: 0 0 10px; }
+.stat pre {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  background: var(--bg);
+  border-radius: 6px;
+  font: 12.5px/1.6 ui-monospace, "Cascadia Mono", Consolas, monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.stat dl { margin: 0; }
+.stat dt { font-size: 12px; font-weight: 600; color: var(--muted); }
+.stat dd { margin: 0 0 8px; }
+.stat dd:last-child { margin-bottom: 0; }
+
+/* Today: the last few months of market type and stress, drawn instead of described */
+.market { margin-bottom: 12px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+.mrow { display: grid; grid-template-columns: 120px minmax(0, 1fr) 120px; gap: 12px; align-items: center; margin: 4px 0; }
+.mrow b { font-weight: 500; white-space: nowrap; }
+.mrow b .swatch.box { margin-right: 6px; vertical-align: 0; }
+.mlabel { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.weeks { display: flex; gap: 2px; height: 16px; }
+.weeks i { flex: 1; border-radius: 2px; }
+.market .note { margin-top: 6px; }
+.spark { display: block; width: 100%; height: 28px; overflow: visible; }
+.spark-area { fill: var(--text); opacity: .08; }
+.spark-line { fill: none; stroke: var(--text); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.spark-mark { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; }
+.spark-zero { stroke: var(--line); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.sparkcell { min-width: 150px; }
+.spark.gap { width: 140px; height: 30px; }
+
+/* Today table: stop, buy zone and target on one line */
+.plan { min-width: 170px; padding-top: 4px; }
+.plan-track { position: relative; height: 8px; background: var(--line); border-radius: 4px; }
+.plan-risk, .plan-reward, .plan-entry { position: absolute; top: 0; bottom: 0; }
+.plan-risk { background: var(--path-stop); border-radius: 4px 0 0 4px; }
+.plan-reward { background: var(--path-target); border-radius: 0 4px 4px 0; }
+.plan-entry { top: -3px; bottom: -3px; background: var(--text); border-radius: 2px; }
+.plan-ends { display: flex; justify-content: space-between; margin-top: 4px; color: var(--muted); font-size: 12px; }
+.chance { display: grid; grid-template-columns: minmax(60px, 1fr) 36px; gap: 8px; align-items: center; min-width: 120px; padding-top: 2px; }
+.chance span { text-align: right; }
+.chance .fill { background: var(--path-target); }
+
+/* Stock page: where the stock sits among its sector peers */
+.peers { margin-bottom: 4px; }
+.peerrow { display: grid; grid-template-columns: 120px minmax(0, 1fr) 64px; gap: 12px; align-items: center; margin: 6px 0; }
+.peerrow b { font-weight: 500; text-align: right; }
+.strip { position: relative; height: 36px; }
+.strip-line { position: absolute; top: 11px; left: 0; right: 0; height: 2px; background: var(--line); }
+.strip i { position: absolute; transform: translateX(-50%); }
+.strip .peer { top: 7px; width: 10px; height: 10px; border-radius: 50%; background: var(--muted); opacity: .4; }
+.strip .median-mark { top: 2px; width: 2px; height: 20px; background: var(--text); }
+.strip .own { top: 4px; width: 16px; height: 16px; border-radius: 50%; background: var(--accent); border: 2px solid var(--surface); z-index: 1; }
+.strip-end { position: absolute; bottom: 0; left: 0; color: var(--muted); font-size: 11px; line-height: 1; }
+.strip-end.right { left: auto; right: 0; }
+details.more { margin-top: 8px; }
+details.more summary { cursor: pointer; color: var(--accent); font-size: 13px; margin-bottom: 8px; }
+
+/* Results: backtest growth and the real-pick tally */
+.mc-chart .equity { fill: none; stroke-width: 2; }
+.mc-chart .e-short { stroke: var(--text); }
+.mc-chart .e-pair { stroke: var(--path-target); }
+.mc-chart .e-momentum { stroke: var(--muted); stroke-dasharray: 5 3; }
+.mc-chart .grid.base { stroke: var(--muted); stroke-dasharray: 2 3; }
+.swatch.e-short { background: var(--text); }
+.swatch.e-pair { background: var(--path-target); }
+.swatch.e-momentum { background: repeating-linear-gradient(90deg, var(--muted) 0 5px, transparent 5px 8px); }
+.recordbar { padding: 4px 16px 8px; }
+.recordbar .oddsbar { margin-bottom: 6px; }
+.o-open { background: var(--muted); opacity: .45; }
+.s-ihsg { background: var(--text); }
+.s-stress { height: 10px; background: var(--mt-panic); opacity: .3; }
+.mc-chart .stress { fill: var(--mt-panic); opacity: .2; }
+.mc-chart .ihsg { fill: none; stroke: var(--text); stroke-width: 2; }
+
+.detailgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px; align-items: start; }
+.detail { overflow-x: auto; }
+.detail th, .detail td { padding: 6px 8px; }
+.detail th:first-child, .detail td:first-child { padding-left: 0; }
+.detail th:last-child, .detail td:last-child { padding-right: 0; }
+
+.swatch.box { height: 10px; width: 14px; }
+i.mt-rally { background: var(--mt-rally); }
+i.mt-quiet { background: var(--mt-quiet); }
+i.mt-weakening { background: var(--mt-weakening); }
+i.mt-panic { background: var(--mt-panic); }
+i.mt-rebound { background: var(--mt-rebound); }
+.mc-chart .mt-rally { fill: var(--mt-rally); }
+.mc-chart .mt-quiet { fill: var(--mt-quiet); }
+.mc-chart .mt-weakening { fill: var(--mt-weakening); }
+.mc-chart .mt-panic { fill: var(--mt-panic); }
+.mc-chart .mt-rebound { fill: var(--mt-rebound); }
+
+.finding { margin: 0 0 12px; font-size: 15px; }
+.textbutton { padding: 0; border: none; background: none; color: var(--accent); font-size: inherit; }
+.textbutton:hover { text-decoration: underline; }
+.sk { background: var(--line); border-radius: 4px; }
+.sk-title { width: 220px; height: 26px; margin-bottom: 8px; }
+.sk-line { width: 420px; max-width: 100%; height: 14px; margin-bottom: 20px; }
+.sk-panel { display: grid; gap: 14px; }
+.sk-row { height: 22px; }
+
+.chartnote { margin: 0 0 8px; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-bottom: 8px; font-size: 12px; color: var(--muted); }
+.key { display: inline-flex; align-items: center; gap: 6px; }
+.swatch { display: inline-block; width: 16px; height: 2px; }
+.s-target { background: var(--path-target); }
+.s-stop { background: var(--path-stop); }
+.s-time { background: var(--muted); }
+.s-band { height: 10px; background: var(--text); opacity: .14; }
+.s-median { height: 2px; background: var(--text); }
+
+.mc-chart { position: relative; overflow: hidden; }
+.mc-chart svg { display: block; }
+.mc-chart .grid { stroke: var(--line); stroke-width: 1; }
+.mc-chart .axis { fill: var(--muted); font-size: 11px; }
+.mc-chart .band { fill: var(--text); opacity: .10; }
+.mc-chart .path { fill: none; stroke-width: 1; opacity: .5; }
+.mc-chart .p-target { stroke: var(--path-target); opacity: .7; }
+.mc-chart .p-stop, .mc-chart .p-time { stroke: var(--muted); opacity: .3; }
+.mc-chart .median { fill: none; stroke: var(--text); stroke-width: 2; }
+.mc-chart .level { stroke-width: 1; stroke-dasharray: 4 3; }
+.mc-chart .l-target { stroke: var(--path-target); }
+.mc-chart .l-stop { stroke: var(--text); }
+.mc-chart .l-entry { stroke: var(--muted); }
+.mc-chart .levelname { fill: var(--text); font-size: 11px; }
+.mc-chart .cross { stroke: var(--muted); stroke-width: 1; pointer-events: none; }
+.mc-chart .hit { fill: transparent; }
+.tip {
+  position: absolute;
+  top: 16px;
+  padding: 6px 8px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.4;
+  pointer-events: none;
+}
+
+.note.pad { padding: 0 16px 16px; }
+.importance { padding: 0 16px 16px; }
+.importance h3 { font-size: 13px; margin: 0 0 8px; }
+.importance .bar { grid-template-columns: 200px minmax(0, 1fr) 48px; max-width: 720px; }
+.themebutton { min-width: 64px; }
+
+/* Stock page: the five answers first */
+.tiles { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+.tile { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; min-width: 0; }
+.tile span { display: block; color: var(--muted); font-size: 12px; white-space: nowrap; }
+.tile b { display: block; font-size: 22px; font-weight: 600; line-height: 1.3; margin-top: 2px; }
+.tile small { display: block; color: var(--muted); font-size: 12px; }
+
+/* What the models see */
+.mlgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px 24px; align-items: start; }
+.mlcard { min-width: 0; }
+.mlcard h3 { font-size: 13px; margin: 0 0 10px; }
+.mlcard h4 { font-size: 12px; font-weight: 500; color: var(--muted); margin: 14px 0 6px; }
+.mlcard.weak .compare b, .mlcard.weak .driver b { color: var(--muted); }
+.mlcard.weak .fill, .mlcard.weak .diverge i { opacity: .45; }
+.compare { display: grid; grid-template-columns: 80px minmax(0, 1fr) 40px; gap: 6px 10px; align-items: center; }
+.compare span { color: var(--muted); font-size: 12px; }
+.compare b { text-align: right; font-weight: 600; }
+.compare .fill.base { background: var(--muted); }
+.driver { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(60px, 1fr) 56px; gap: 10px; align-items: center; margin: 6px 0; }
+.driver span { font-size: 13px; min-width: 0; }
+.driver small { display: block; color: var(--muted); font-size: 12px; }
+.driver b { text-align: right; font-weight: 500; white-space: nowrap; }
+.diverge { position: relative; height: 10px; background: linear-gradient(var(--line), var(--line)) center / 1px 100% no-repeat; }
+.diverge i { position: absolute; top: 1px; bottom: 1px; }
+.diverge .raise { left: 50%; background: var(--path-target); border-radius: 0 3px 3px 0; }
+.diverge .lower { right: 50%; background: var(--path-stop); border-radius: 3px 0 0 3px; }
+table.mini th, table.mini td { padding: 5px 6px; font-size: 13px; }
+table.mini th:first-child, table.mini td:first-child { padding-left: 0; }
+table.mini th:last-child, table.mini td:last-child { padding-right: 0; }
+table.mini small { display: block; color: var(--muted); font-size: 11px; }
+
+/* Revenue and net income by year */
+.ychart { position: relative; display: flex; gap: 6px; height: 150px; margin: 4px 0 24px; }
+.yzero { position: absolute; left: 0; right: 0; height: 1px; background: var(--muted); opacity: .5; }
+.ycol { position: relative; flex: 1; min-width: 0; }
+.ybars { position: absolute; inset: 0; }
+.ybars i { position: absolute; width: 38%; border-radius: 2px; }
+.ybars .yrev { left: 10%; background: var(--muted); opacity: .45; }
+.ybars .yinc { left: 52%; background: var(--accent); }
+.ybars .yinc.loss { background: var(--path-stop); }
+.ycol span { position: absolute; left: 0; right: 0; bottom: -20px; text-align: center; color: var(--muted); font-size: 11px; }
+.swatch.yrev { background: var(--muted); opacity: .45; }
+.swatch.yinc { background: var(--accent); }
+.yearly details .detail { margin-top: 8px; }
+/* Factor scores and the yearly chart share a row: both take its full height, and the chart grows to fill */
+.grid > .factors, .grid > .yearly { align-self: stretch; }
+.yearly { display: flex; flex-direction: column; }
+.yearly .ychart { flex: 1; min-height: 120px; height: auto; }
+
+/* Today: overlap between picks */
+.flag { display: inline-block; margin-top: 4px; padding: 0 6px; border-radius: 4px; background: var(--warn-bg); color: var(--warn-text); font-size: 11px; font-weight: 500; white-space: nowrap; }
+.overlapnote { margin-bottom: 12px; padding: 10px 14px; background: var(--warn-bg); color: var(--warn-text); border-radius: 8px; font-size: 13px; }
+.overlapnote ul { margin: 4px 0 6px; padding-left: 18px; }
+.overlapnote a { color: inherit; text-decoration: underline; }
+.overlapnote .help { border-color: currentColor; color: inherit; }
+.panel.overlap { margin-top: 16px; }
+.overlap .metrics { grid-template-columns: repeat(2, minmax(0, 160px)); margin-bottom: 12px; }
+.overlap .metric small { font-size: 13px; color: var(--muted); font-weight: 400; }
+.overlapgrid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 16px 32px; align-items: start; }
+.overlapgrid h3 { font-size: 13px; margin: 0 0 8px; }
+.overlapgrid .bar { grid-template-columns: 110px 1fr 24px; }
+.heatwrap { overflow-x: auto; }
+table.heat { width: auto; border-collapse: separate; border-spacing: 2px; }
+table.heat th { padding: 0 4px; border: none; font-size: 11px; color: var(--muted); font-weight: 400; }
+table.heat thead th { height: 52px; vertical-align: bottom; }
+table.heat thead th span { display: inline-block; writing-mode: vertical-rl; transform: rotate(180deg); }
+table.heat tbody th { text-align: right; }
+table.heat td { width: 22px; height: 22px; padding: 0; border: none; border-radius: 3px; background: color-mix(in srgb, var(--accent) var(--heat, 0%), var(--line)); }
+table.heat td.self { background: transparent; box-shadow: inset 0 0 0 1px var(--line); }
+.heatscale { display: flex; align-items: center; gap: 8px; margin-top: 8px; color: var(--muted); font-size: 11px; }
+.heatscale i { width: 120px; height: 8px; border-radius: 4px; background: linear-gradient(90deg, var(--line), var(--accent)); }
+
+/* Stock page: earnings and dividends */
+.eventgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.eventgrid .tile { background: var(--bg); border: none; }
+.eventgrid .tile b { font-size: 17px; }
+.eventwarn { margin: 0 0 12px; padding: 8px 12px; background: var(--warn-bg); color: var(--warn-text); border-radius: 6px; font-size: 13px; }
+
+/* Stocks page: sector rotation */
+.rotationwrap { overflow-x: auto; padding: 0 16px; }
+table.rotation { width: auto; min-width: 100%; border-collapse: separate; border-spacing: 2px; }
+table.rotation th { padding: 2px 6px; border: none; font-size: 11px; color: var(--muted); font-weight: 400; white-space: nowrap; }
+table.rotation tbody th { text-align: left; color: var(--text); font-size: 13px; }
+table.rotation tbody th small { display: block; color: var(--muted); font-size: 11px; }
+table.rotation td { min-width: 34px; height: 24px; padding: 0 6px; border: none; border-radius: 3px; }
+.rotationrow { margin-top: 24px; }
+table.rotation td.rise { background: color-mix(in srgb, var(--path-target) var(--heat, 0%), var(--line)); }
+table.rotation td.fall { background: color-mix(in srgb, var(--path-stop) var(--heat, 0%), var(--line)); }
+table.rotation td.n { background: none; font-size: 13px; }
+table.rotation tr.total th, table.rotation tr.total td.n { font-weight: 600; }
+table.rotation tr.total th { border-top: 1px solid var(--line); }
+.heatscale i.diverging { background: linear-gradient(90deg, var(--path-stop), var(--line), var(--path-target)); }
+.heatscale.pad { padding: 0 16px; margin-top: 10px; }
+
+/* Stocks page: screener */
+.screenbar { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin: 20px 0 4px; }
+.screenbar input, .screenbar select { font: inherit; padding: 5px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--text); }
+.screenbar input { width: 240px; max-width: 100%; }
+.screenbar .filters { margin: 0; }
+.screener th button.sortbutton { padding: 0; border: none; background: none; color: inherit; font: inherit; cursor: pointer; }
+.screener th[aria-sort="ascending"] .sortbutton::after { content: " ↑"; }
+.screener th[aria-sort="descending"] .sortbutton::after { content: " ↓"; }
+.screener th[aria-sort="ascending"], .screener th[aria-sort="descending"] { color: var(--text); }
+.screener td .tag { margin-top: 4px; }
+.screener td small { display: block; color: var(--muted); font-size: 11px; }
+.screener td.emptyrow { text-align: center; color: var(--muted); padding: 24px; }
+.toneword { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.screener .toneword { justify-content: flex-end; }
+
+/* Stock page: news */
+.newshead { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; margin-bottom: 8px; }
+.newshead b { font-size: 17px; }
+.newshead span { color: var(--muted); font-size: 13px; }
+ul.headlines { list-style: none; margin: 4px 0 0; padding: 0; }
+ul.headlines li { display: flex; gap: 10px; align-items: baseline; padding: 7px 0; border-bottom: 1px solid var(--line); }
+ul.headlines li:last-child { border-bottom: none; }
+ul.headlines small { display: block; color: var(--muted); font-size: 12px; }
+ul.headlines a { color: var(--text); }
+ul.headlines a:hover { color: var(--accent); }
+.dot { flex: none; width: 8px; height: 8px; border-radius: 50%; transform: translateY(-1px); }
+.dot.up { background: var(--path-target); }
+.dot.down { background: var(--path-stop); }
+.dot.flat { background: var(--muted); opacity: .5; }
+.o-neither { background: var(--line); }
+
+/* Information diffusion */
+.panel.catchup { margin-top: 16px; }
+.flowgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 32px; }
+.flowgrid h3 { font-size: 13px; margin: 0 0 6px; }
+ul.flowlist { list-style: none; margin: 0; padding: 0; }
+ul.flowlist li { display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; gap: 8px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--line); }
+ul.flowlist li:last-child { border-bottom: none; }
+ul.flowlist .nm { display: inline; }
+.flowmove { color: var(--muted); font-size: 12px; text-align: right; white-space: nowrap; }
+.flowstatus { margin: 0 0 10px; font-size: 13px; }
+.flowstatus .tag { margin-right: 6px; }
+h3.subhead { font-size: 13px; margin: 4px 16px 0; }
+
+/* Stock page: price chart */
+.charthead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.charthead h2 { margin: 0; }
+.charthead .ranges { margin: 0; }
+.charthead .ranges button { padding: 2px 10px; font-size: 12px; }
+.mc-chart .price-line { fill: none; stroke: var(--text); stroke-width: 1.8; }
+.mc-chart .ma50 { fill: none; stroke: var(--accent); stroke-width: 1.5; }
+.mc-chart .ma200 { fill: none; stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 5 3; }
+.mc-chart .zone { fill: var(--accent); opacity: .14; }
+.mc-chart .hover-dot { fill: var(--text); pointer-events: none; }
+.mc-chart .vol-up { fill: var(--path-target); opacity: .45; }
+.mc-chart .vol-down { fill: var(--path-stop); opacity: .45; }
+.mc-chart .vol-average { fill: none; stroke: var(--text); stroke-width: 1.2; opacity: .7; }
+.swatch.s-price { height: 2px; background: var(--text); }
+.swatch.s-ma50 { height: 2px; background: var(--accent); }
+.swatch.s-ma200 { height: 2px; background: repeating-linear-gradient(90deg, var(--muted) 0 5px, transparent 5px 8px); }
+.swatch.s-zone { background: var(--accent); opacity: .3; }
+.swatch.s-stopline { height: 2px; background: repeating-linear-gradient(90deg, var(--text) 0 4px, transparent 4px 7px); }
+
+footer { max-width: 1120px; margin: 0 auto; padding: 8px 24px 32px; color: var(--muted); font-size: 12px; }
+
+@media (max-width: 960px) {
+  .tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  /* The screener scrolls sideways from here down, so its stock name stays pinned on the left */
+  .screener th:first-child, .screener td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--surface);
+    box-shadow: 1px 0 0 var(--line);
+  }
+}
+
+@media (max-width: 720px) {
+  .topbar, main, .banner, footer { padding-left: 16px; padding-right: 16px; }
+  .grid, .stats, .detailgrid { grid-template-columns: minmax(0, 1fr); }
+  .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .status { margin-left: 0; width: 100%; justify-content: space-between; }
+  .mrow, .peerrow { grid-template-columns: 92px minmax(0, 1fr) auto; gap: 8px; }
+  .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tile:first-child { grid-column: 1 / -1; }
+  .eventgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .overlapgrid { grid-template-columns: minmax(0, 1fr); }
+  .flowgrid { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Phone: pin the stock name, so a sideways scroll never loses the row. Today's picks also drop the rank column. */
+@media (max-width: 640px) {
+  .tablewrap.picks th:first-child, .tablewrap.picks td:first-child { display: none; }
+  .tablewrap.picks th:nth-child(2), .tablewrap.picks td:nth-child(2),
+  .screener th:first-child, .screener td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    min-width: 130px;
+    background: var(--surface);
+    box-shadow: 1px 0 0 var(--line);
+  }
+  .tablewrap.picks td:last-child { min-width: 200px; }
+}
