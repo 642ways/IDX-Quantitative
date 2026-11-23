@@ -9,9 +9,9 @@ on:
     - cron: "23 11 * * 1-5" # 18:23 WIB
     - cron: "53 12 * * 1-5" # 19:53 WIB
     - cron: "37 15 * * 1-5" # 22:37 WIB
-  # The Cloudflare Worker in scheduler/ starts a run through GitHub's API as soon as the day's prices are
-  # final, usually about 16:25 WIB, with if_due set so it behaves like the scheduled tries. Starting a run
-  # by hand leaves it off and always refreshes.
+  # The Cloudflare Worker in scheduler/ starts a run through GitHub's API whenever Yahoo has a finished
+  # trading day the site doesn't show, usually about 16:25 WIB. It has already checked there's something
+  # new, so it leaves if_due off, as does starting a run by hand: both always refresh.
   workflow_dispatch:
     inputs:
       if_due:

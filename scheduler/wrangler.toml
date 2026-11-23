@@ -5,9 +5,11 @@ main = "worker.js"
 compatibility_date = "2026-10-01"
 
 [triggers]
-# Cloudflare cron times are in UTC: every 5 minutes from 09:00 to 12:55 UTC is 16:00 to 19:55 WIB,
-# Monday to Friday. The Worker itself decides whether the day's prices are ready.
-crons = ["*/5 9-12 * * 1-5"]
+# Cloudflare cron times are in UTC.
+# Every 5 minutes from 09:00 to 12:55 UTC (16:00 to 19:55 WIB), Monday to Friday, for a refresh soon after
+# the close; and at 17 minutes past every hour, every day, to catch a day Yahoo publishes late.
+# The Worker itself decides each time whether there's anything new.
+crons = ["*/5 9-12 * * 1-5", "17 * * * *"]
 
 [observability]
 enabled = true

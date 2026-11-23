@@ -362,19 +362,19 @@ A failed refresh still publishes the last good result and marks the run as faile
 
 ### Start it as soon as the market closes, with a Cloudflare Worker
 
-A run started through GitHub's API begins within seconds, while scheduled runs can wait for hours. The free Cloudflare Worker in `scheduler/` checks every 5 minutes from 16:00 to 19:55 WIB on weekdays:
+A run started through GitHub's API begins within seconds, while scheduled runs can wait for hours. The free Cloudflare Worker in `scheduler/` starts a refresh whenever Yahoo has a finished trading day the live site doesn't show yet. It checks every 5 minutes from 16:00 to 19:55 WIB on weekdays, and at 17 minutes past every hour, every day:
 
-1. If the live site already shows today's data, it stops.
-2. If a refresh started in the last 20 minutes, it waits, since that run may still be running or Vercel may still be deploying.
-3. It asks Yahoo whether today's IHSG session is over: Yahoo's session runs to 16:15 WIB with post-trading, and the Worker waits 10 more minutes for the close and volume to settle. On a market holiday there's no bar for today, so nothing runs. If Yahoo can't be reached, it goes by the clock from 16:40 WIB.
-4. Then it starts the workflow, which usually means fresh data on the site by about 16:30 to 16:45 WIB, depending on how quickly Vercel deploys.
+1. It asks Yahoo for IHSG's daily bars and finds the latest finished day. Today only counts once the session is over and settled: Yahoo's session runs to 16:15 WIB with post-trading, and the Worker waits 10 more minutes. If Yahoo can't be reached, it goes by the clock: from 16:40 WIB on a weekday.
+2. If the live site already shows that day, it stops. On a market holiday or a weekend Yahoo has no newer day, so nothing runs.
+3. If a refresh started in the last 30 minutes, it waits, since that run may still be running or Vercel may still be deploying. After 4 refreshes in 12 hours without the site catching up, it stops trying.
+4. Otherwise it starts the workflow. On a normal day that's about 16:25 WIB, with fresh data on the site by about 16:30 to 16:45.
 
-The GitHub schedule stays as a backup, and any run that comes later sees the data is done and stops. The Worker's logic is tested with `node --test scheduler/worker.test.mjs`.
+The hourly check exists because Yahoo sometimes publishes a day late. On Friday 20 November 2026 it had no bar for that day all evening and into Saturday morning, so every run that night found nothing new; the hourly check picks such a day up as soon as Yahoo has it, even on a weekend. The GitHub schedule stays as a backup. The Worker's logic, including that day, is tested with `node --test scheduler/worker.test.mjs`.
 
 1. **GitHub token:** on GitHub, open **Settings > Developer settings > Personal access tokens > Fine-grained tokens > Generate new token**. Give it a name and an expiry date, choose **Only select repositories** and pick this repository, then under **Repository permissions** set **Actions** to **Read and write**. Copy the token.
 2. **Worker:** in Cloudflare, open **Workers & Pages > Create application**, start from **Hello World**, name it `idx-quant-cron` and deploy. Open **Edit code**, replace everything with `scheduler/worker.js`, and deploy again.
 3. **Secret:** in the Worker's **Settings > Variables and Secrets**, add a **Secret** named `GITHUB_TOKEN` with the token as its value.
-4. **Schedule:** in **Settings > Trigger events**, add a **Cron trigger** with `*/5 9-12 * * 1-5`. Cloudflare uses UTC, so that's every 5 minutes from 16:00 to 19:55 WIB on weekdays.
+4. **Schedule:** in **Settings > Trigger events**, add two **Cron triggers**: `*/5 9-12 * * 1-5` (every 5 minutes from 16:00 to 19:55 WIB on weekdays; Cloudflare uses UTC) and `17 * * * *` (17 minutes past every hour, every day).
 5. **Test (optional):** add another secret, `RUN_KEY`, with any long random text. Then:
    - `https://idx-quant-cron.<your-subdomain>.workers.dev/?key=<that text>&check=1` says what the Worker would do right now, and starts nothing.
    - `https://idx-quant-cron.<your-subdomain>.workers.dev/?key=<that text>` starts a refresh straight away. It should say "GitHub answered 204", and a new run appears under **Actions** within a few seconds.
